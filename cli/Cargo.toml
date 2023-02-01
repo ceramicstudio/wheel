@@ -16,4 +16,4 @@ inquire = "0.5.3"
 log = "0.4"
 serde_json = "1.0.91"
 ssi = "0.5.0"
-tokio = { version = "1.25.0", default-features = false, features = ["fs", "macros", "rt", "rt-multi-thread"] }
+tokio = { version = "1.25.0", default-features = false, features = ["fs", "macros", "process", "rt", "rt-multi-thread"] }
