@@ -20,4 +20,4 @@ fi
 
 cargo install --force wheel-3bl
 
-wheel
+wheel "$@"

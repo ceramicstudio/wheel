@@ -16,7 +16,6 @@ async fn main() -> anyhow::Result<()> {
     let args = ProgramArgs::parse();
 
     if args.interactive {
-        let doc = wheel::prompt::did::generate_did().await?;
-        let cfg = wheel::prompt::ceramic::prompt(None)?;
+        wheel::interactive().await?;
     }
 }
