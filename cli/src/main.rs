@@ -4,10 +4,10 @@ use std::path::PathBuf;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct ProgramArgs {
-    #[arg(long, short = "i", default = true)]
+    #[arg(long, short = 'i', default_value_t = true)]
     interactive: bool,
-    #[arg(long, short = "d", default = ".")]
-    working_directory: PathBuf,
+    #[arg(long, short = 'd')]
+    working_directory: Option<String>,
 }
 
 #[tokio::main]
@@ -18,4 +18,6 @@ async fn main() -> anyhow::Result<()> {
     if args.interactive {
         wheel::interactive().await?;
     }
+
+    Ok(())
 }

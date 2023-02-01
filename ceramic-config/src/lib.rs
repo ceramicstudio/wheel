@@ -378,6 +378,6 @@ mod tests {
     fn should_generate_default_config() {
         let js = serde_json::to_string(&Config::default()).unwrap();
         assert_eq!(&js, r#"{}"#);
-        serde_json::from_str(&js).unwrap();
+        let _: Config = serde_json::from_str(&js).unwrap();
     }
 }

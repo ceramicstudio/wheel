@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use inquire::*;
+use std::path::PathBuf;
 
 pub struct Project {
     pub name: String,
