@@ -19,7 +19,7 @@ async fn main() -> anyhow::Result<()> {
 
     if args.interactive {
         log::info!("Starting interactive configuration");
-        wheel::interactive().await?;
+        wheel_3box::interactive().await?;
     }
 
     Ok(())
