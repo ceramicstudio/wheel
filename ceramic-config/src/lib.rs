@@ -377,7 +377,10 @@ mod tests {
     #[test]
     fn should_generate_default_config() {
         let js = serde_json::to_string(&Config::default()).unwrap();
-        assert_eq!(&js, r#"{}"#);
+        assert_eq!(
+            &js,
+            r#"{"ipfs":"Bundled","state_store":{"LocalDirectory":"/etc/ceramic/data"},"http_api":{"hostname":"127.0.0.1","port":80,"cors_allowed_origins":[],"admin_dids":[]},"network":{"name":"???","pubsub_topic":"???"},"anchor":{"anchor_service_url":"???","ethereum_rpc_url":"???"},"index":{"db":"???","allow_queries_before_historical_sync":false},"did_resolvers":{"Ethr":{}},"node":{"gateway":false,"sync_override":false,"stream_cache_limit":100},"logger":{"file":{"enabled":true,"directory":"/var/log/ceramic"},"level":"Info"},"metrics":{"enabled":false,"host":"???"}}"#
+        );
         let _: Config = serde_json::from_str(&js).unwrap();
     }
 }
