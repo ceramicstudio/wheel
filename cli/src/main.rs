@@ -1,5 +1,5 @@
 use clap::Parser;
-use std::path::PathBuf;
+use log::LevelFilter;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -12,10 +12,13 @@ struct ProgramArgs {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let _ = env_logger::builder().try_init();
+    let _ = env_logger::builder()
+        .filter_level(LevelFilter::Info)
+        .try_init();
     let args = ProgramArgs::parse();
 
     if args.interactive {
+        log::info!("Starting interactive configuration");
         wheel::interactive().await?;
     }
 

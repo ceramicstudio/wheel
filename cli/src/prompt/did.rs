@@ -2,7 +2,7 @@ use ed25519_compact::{KeyPair, Seed};
 use hex::ToHex;
 use inquire::*;
 use ssi::did::DocumentBuilder;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tokio::io::AsyncWriteExt;
 
 enum DidSelect {
@@ -21,9 +21,7 @@ impl std::fmt::Display for DidSelect {
     }
 }
 
-const DID_DEFAULT_LOCATION: &'static str = "/etc/ceramic/admin.did";
-
-pub async fn generate_did() -> anyhow::Result<ssi::did::Document> {
+pub async fn generate_did(path: &Path) -> anyhow::Result<ssi::did::Document> {
     let ans = Select::new(
         "Admin DID Configuration",
         vec![DidSelect::Generate, DidSelect::Input, DidSelect::Exit],
@@ -31,24 +29,30 @@ pub async fn generate_did() -> anyhow::Result<ssi::did::Document> {
     .with_help_message("Step through interactive prompts to configure ceramic node")
     .prompt()?;
 
+    let default_admin_key_location = path.join("admin.json");
+    let path_str = default_admin_key_location.to_string_lossy();
+
     let doc = match ans {
         DidSelect::Generate => {
             let p = Text::new("Location to save keypair to")
-                .with_default("/etc/ceramic/generated")
+                .with_default(path.to_string_lossy().as_ref())
                 .prompt()?;
             let p = PathBuf::from(p);
+            if !p.exists() {
+                tokio::fs::create_dir_all(&p).await?
+            }
             let key_pair = KeyPair::from_seed(Seed::default());
             let mut f = tokio::fs::OpenOptions::new()
                 .write(true)
                 .create(true)
-                .open(p.clone())
+                .open(p.join("ed25519"))
                 .await?;
             f.write_all(&*key_pair.sk).await?;
             f.flush().await?;
             let mut f = tokio::fs::OpenOptions::new()
                 .write(true)
                 .create(true)
-                .open(p.join(".pub"))
+                .open(p.join("ed25519.pub"))
                 .await?;
             f.write_all(&*key_pair.pk).await?;
             f.flush().await?;
@@ -60,8 +64,8 @@ pub async fn generate_did() -> anyhow::Result<ssi::did::Document> {
                 .build()
         }
         DidSelect::Input => {
-            let p = Text::new("Path to DID File")
-                .with_default("/etc/ceramic/ceramic.json")
+            let p = Text::new("Path to Admin DID File")
+                .with_default(default_admin_key_location.to_string_lossy().as_ref())
                 .prompt()?;
             let data = tokio::fs::read(PathBuf::from(p)).await?;
             DocumentBuilder::default()
@@ -77,7 +81,7 @@ pub async fn generate_did() -> anyhow::Result<ssi::did::Document> {
     let doc = doc.map_err(|s| anyhow::anyhow!(s))?;
 
     if let Some(p) = Text::new("Location to save DID to")
-        .with_default(DID_DEFAULT_LOCATION)
+        .with_default(path_str.as_ref())
         .prompt_skippable()?
     {
         let p = PathBuf::from(p);

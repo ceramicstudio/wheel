@@ -1,26 +1,11 @@
 use ceramic_config::*;
 use inquire::*;
+use ssi::did::Document;
 use std::path::PathBuf;
 use std::process::exit;
 use tokio::io::AsyncWriteExt;
 
-enum ConfigSelect {
-    Start,
-    Skip,
-    Exit,
-}
-
-impl std::fmt::Display for ConfigSelect {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Start => write!(f, "Start"),
-            Self::Skip => write!(f, "Skip"),
-            Self::Exit => write!(f, "Exit"),
-        }
-    }
-}
-
-pub async fn prompt(admin_did: Option<String>) -> anyhow::Result<Config> {
+pub async fn prompt(admin_did: Option<&Document>) -> anyhow::Result<Config> {
     let cfg_file_path = Text::new("Ceramic ceramic-config file location")
         .with_default("/etc/ceramic/ceramic.json")
         .prompt()?;
@@ -33,19 +18,12 @@ pub async fn prompt(admin_did: Option<String>) -> anyhow::Result<Config> {
         (Config::default(), "")
     };
 
-    let ans = Select::new(
-        &format!("Start ceramic configuration?{}", existing),
-        vec![ConfigSelect::Start, ConfigSelect::Skip, ConfigSelect::Exit],
-    )
-    .with_help_message("Step through interactive prompts to configure ceramic node")
-    .prompt()?;
+    let ans = Confirm::new(&format!("Start ceramic configuration?{}", existing))
+        .with_help_message("Step through interactive prompts to configure ceramic node")
+        .prompt_skippable()?;
 
-    match ans {
-        ConfigSelect::Start => {
-            configure_ceramic(&mut cfg, admin_did).await?;
-        }
-        ConfigSelect::Skip => {}
-        ConfigSelect::Exit => exit(0),
+    if let Some(true) = ans {
+        configure_ceramic(&mut cfg, admin_did).await?;
     }
 
     let mut f = tokio::fs::OpenOptions::new()
@@ -134,7 +112,7 @@ async fn configure_state_store() -> anyhow::Result<StateStore> {
     Ok(r)
 }
 
-fn configure_http_api(admin_did: Option<String>) -> anyhow::Result<HttpApi> {
+fn configure_http_api(admin_did: Option<&Document>) -> anyhow::Result<HttpApi> {
     let mut http = HttpApi::default();
     http.hostname = Text::new("Bind address")
         .with_default(&http.hostname)
@@ -147,7 +125,7 @@ fn configure_http_api(admin_did: Option<String>) -> anyhow::Result<HttpApi> {
     let cors = cors.split(",").map(|s| s.trim().to_string()).collect();
     http.cors_allowed_origins = cors;
     if let Some(did) = admin_did {
-        http.admin_dids = vec![did.to_string()];
+        http.admin_dids = vec![did.id.clone()];
     } else {
         let dids = Text::new("Admin DIDs, comma separated").prompt()?;
         //TODO: validate dids
@@ -187,10 +165,10 @@ fn configure_index() -> anyhow::Result<Index> {
     Ok(index)
 }
 
-async fn configure_ceramic(
-    cfg: &mut Config,
-    admin_did: Option<String>,
-) -> anyhow::Result<&mut Config> {
+async fn configure_ceramic<'a, 'b>(
+    cfg: &'a mut Config,
+    admin_did: Option<&'b Document>,
+) -> anyhow::Result<&'a mut Config> {
     cfg.ipfs = configure_ipfs()?;
     cfg.state_store = configure_state_store().await?;
     cfg.http_api = configure_http_api(admin_did)?;
