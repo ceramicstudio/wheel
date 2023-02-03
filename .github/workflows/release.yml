@@ -64,8 +64,10 @@ jobs:
         with:
           wasm-pack
       - id: build-wasm-pack
+        working-directory: ceramic-config
         run: wasm-pack build
       - id: publish-wasm-pack
+        working-directory: ceramic-config
         run: wasm-pack publish
 
 
