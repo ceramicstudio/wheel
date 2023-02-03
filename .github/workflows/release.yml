@@ -52,6 +52,22 @@ jobs:
           # (required) GitHub token for creating GitHub Releases.
           token: ${{ secrets.GH_TOKEN }}
 
+  # Publish ceramic-config to npm for use with js-ceramic
+  publish-ceramic-config-wasm:
+    runs-on: ubuntu-latest
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+    steps:
+      - uses: actions/checkout@v3
+      - id: install-wasm-pack
+        uses: taiki-e/install-action@v1
+        with:
+          wasm-pack
+      - id: build-wasm-pack
+        run: wasm-pack build
+      - id: publish-wasm-pack
+        run: wasm-pack publish
+
 
   # Build and packages all the things
   upload-artifacts:
