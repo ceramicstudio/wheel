@@ -54,6 +54,7 @@ jobs:
 
   # Publish ceramic-config to npm for use with js-ceramic
   publish-ceramic-config-wasm:
+    needs: create-release
     runs-on: ubuntu-latest
     env:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -62,7 +63,7 @@ jobs:
       - id: install-wasm-pack
         uses: taiki-e/install-action@v1
         with:
-          wasm-pack
+          tool: wasm-pack
       - id: build-wasm-pack
         run: wasm-pack build
       - id: publish-wasm-pack
