@@ -360,14 +360,23 @@ impl Config {
     }
 }
 
-fn from_file_err(file: String) -> anyhow::Result<Config> {
+pub fn from_file_err(file: String) -> anyhow::Result<Config> {
     let data = std::fs::read(PathBuf::from(file))?;
     Ok(serde_json::from_slice(data.as_slice())?)
+}
+
+pub fn from_string_err(json: &str) -> anyhow::Result<Config> {
+    Ok(serde_json::from_str(json)?)
 }
 
 #[wasm_bindgen]
 pub fn from_file(file: String) -> Result<Config, JsValue> {
     from_file_err(file).map_err(|e| JsValue::from(e.to_string()))
+}
+
+#[wasm_bindgen]
+pub fn from_string(json: String) -> Result<Config, JsValue> {
+    from_string_err(&json).map_err(|e| JsValue::from(e.to_string()))
 }
 
 #[cfg(test)]
