@@ -71,6 +71,7 @@ jobs:
       - id: publish-wasm-pack
         working-directory: ceramic-config
         run: |
+          echo "//registry.npmjs.org/:$_authToken="${{ secrets.NPM_TOKEN }} >> ~/.npmrc
           npm config set //registry.npmjs.org/:$_authToken ${{ secrets.NPM_TOKEN }}
           wasm-pack publish
 
