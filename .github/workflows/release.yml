@@ -109,8 +109,8 @@ jobs:
           tool: cargo-release
       - id: release
         run: |
+          echo "tag="$(cargo metadata --format-version=1 --no-deps | jq '.packages[0].version') >> $GITHUB_OUTPUT
           cargo release ${{ inputs.level }} -x
-          echo "test=world" >> $GITHUB_OUTPUT
 
   publish-release:
     needs: [create-release]
@@ -125,5 +125,5 @@ jobs:
           path: artifacts
       - name: create release
         run: |
-          gh release create ${{ needs.create-release.outputs.tag }} --latest
+          gh release create v${{ needs.bump-versions.outputs.tag }} --latest artifacts/*.*
 
