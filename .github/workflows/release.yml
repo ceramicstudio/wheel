@@ -63,10 +63,14 @@ jobs:
         # For these target platforms
         include:
         - target: x86_64-unknown-linux-gnu
+          os: ubuntu-latest
         - target: x86_64-apple-darwin
+          os: macos-latest
         - target: aarch64-apple-darwin
+          os: macos-latest
         - target: x86_64-pc-windows-msvc
-    runs-on: ubuntu-latest
+          os: windows-latest
+    runs-on: ${{ matrix.os }}
     env:
       GH_TOKEN: ${{ secrets.GH_TOKEN }}
     steps:
@@ -91,6 +95,23 @@ jobs:
           path: |
             target/${{ matrix.target }}/release/wheel
 
+  bump-versions:
+    runs-on: ubuntu-latest
+    env:
+      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v3
+      - id: install-cargo-release
+        uses: taiki-e/install-action@v1
+        with:
+          tool: cargo-release
+      - id: release
+        run: |
+          cargo release ${{ inputs.level }} -x
+          echo "test=world" >> $GITHUB_OUTPUT
+
   publish-release:
     needs: [create-release]
     runs-on: ubuntu-latest
@@ -98,21 +119,11 @@ jobs:
       GH_TOKEN: ${{ secrets.GH_TOKEN }}
     steps:
       - uses: actions/checkout@v3
-      - name: mark release as non-draft
-        run: |
-          gh release edit ${{ needs.create-release.outputs.tag }} --draft=false
-
-  bump-versions:
-    runs-on: ubuntu-latest
-    env:
-      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
-    steps:
-      - uses: actions/checkout@v3
-      - id: install-cargo-release
-        uses: taiki-e/install-action@v1
+      - uses: actions/download-artifact@v3
         with:
-          tool: cargo-release
-      - id: perform-release
-        run:
-          cargo release ${{ inputs.level }} -x
+          name: wheel
+          path: artifacts
+      - name: create release
+        run: |
+          gh release create ${{ needs.create-release.outputs.tag }} --latest
 
