@@ -5,7 +5,7 @@ Compose DB Start Tool
 ## Getting Started
 Run the following to get up and going
 
-    curl --proto '=https' --tlsv1.2 -sSf https://github.com/dbcfd/wheel/wheel.sh | sh
+    curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/dbcfd/wheel/main/wheel.sh | bash
 
 What this does
  1. Installs rust if it doesn't exist

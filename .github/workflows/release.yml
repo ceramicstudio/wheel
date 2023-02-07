@@ -110,8 +110,10 @@ jobs:
           tool: cargo-release
       - id: release
         run: |
+          git config user.email "github@3box.io"
+          git config user.name "Github Automation"
           echo "tag="$(cargo metadata --format-version=1 --no-deps | jq '.packages[0].version') >> $GITHUB_OUTPUT
-          cargo release ${{ inputs.level }} -x
+          cargo release ${{ inputs.level }} -x --no-confirm
 
   publish-release:
     needs: [bump-versions]
@@ -122,7 +124,6 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
         with:
-          name: wheel
           path: artifacts
       - name: create release
         run: |
