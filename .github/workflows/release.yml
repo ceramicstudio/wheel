@@ -110,6 +110,8 @@ jobs:
           tool: cargo-release
       - id: release
         run: |
+          git config user.email "github@3box.io"
+          git config user.name "Github Automation"
           echo "tag="$(cargo metadata --format-version=1 --no-deps | jq '.packages[0].version') >> $GITHUB_OUTPUT
           cargo release ${{ inputs.level }} -x --no-confirm
 
