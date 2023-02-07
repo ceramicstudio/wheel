@@ -1,2 +1,2 @@
 consolidate-commits = false
-allow-branch = ["master"]
+allow-branch = ["main"]
