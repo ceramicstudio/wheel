@@ -1,22 +1,14 @@
+use ssi::did::Document;
 use std::path::Path;
-
+use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 
 pub async fn install_compose_db(
-    _cfg: &ceramic_config::Config,
+    cfg: &ceramic_config::Config,
+    admin_did: &Document,
     working_directory: &Path,
     version: &Option<semver::Version>,
 ) -> anyhow::Result<()> {
-    log::info!("Checking for npm");
-    if !Command::new("command")
-        .args(&["-v", "npm"])
-        .status()
-        .await?
-        .success()
-    {
-        anyhow::bail!("npx was not found, please install node.js")
-    }
-
     log::info!("Installing composedb cli");
     let mut program = "@composedb/cli".to_string();
     if let Some(v) = version.as_ref() {
@@ -32,9 +24,21 @@ pub async fn install_compose_db(
         anyhow::bail!("Failed to install composedb cli");
     }
 
-    //TODO: need to wrap this to talk to correct host
+    let hostname = format!("http://{}:{}", cfg.http_api.hostname, cfg.http_api.port);
+    let mut f = tokio::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .append(false)
+        .open(working_directory.join("composedb.env"))
+        .await?;
 
-    log::info!("ComposeDB cli now available");
+    f.write_all(format!("export DID_PRIVATE_KEY={}", admin_did.id.to_string()).as_bytes())
+        .await?;
+    f.write_all(format!("export CERAMIC_URL={}", hostname).as_bytes())
+        .await?;
+    f.flush().await?;
+
+    log::info!("ComposeDB cli now available. To properly use composedb, please use the following command `composedb --did-private-key={} --ceramic-url={}`", admin_did.id.to_string(), hostname);
 
     Ok(())
 }

@@ -2,6 +2,8 @@ mod install;
 mod prompt;
 
 use inquire::*;
+use std::path::PathBuf;
+use tokio::io::AsyncWriteExt;
 
 pub struct Versions {
     pub ceramic: semver::Version,
@@ -49,41 +51,62 @@ pub async fn interactive() -> anyhow::Result<()> {
             ProjectType::Advanced,
         ],
     )
-    .with_help_message("Test and Production will use existing ceramic nodes")
+    .with_help_message("Local nodes will not anchor")
     .prompt()?;
 
     let project = prompt::project::configure_project().await?;
 
-    let cfg = match ans {
-        ProjectType::Local => {
-            let doc = prompt::did::generate_did(&project.path).await?;
-            let cfg = prompt::ceramic_local_config::prompt(&project.path, &doc).await?;
-            install::ceramic_daemon::install_ceramic_daemon(&project.path, &None).await?;
-            install::kubo::install_kubo(&project.path, &None).await?;
-            cfg
-        }
-        ProjectType::Advanced => {
-            let doc = prompt::did::generate_did(&project.path).await?;
-            let cfg = prompt::ceramic_config::prompt(&project.path, &doc).await?;
-            install::ceramic_daemon::install_ceramic_daemon(&project.path, &None).await?;
-            install::kubo::install_kubo(&project.path, &None).await?;
-            cfg
-        }
-        ProjectType::Test => {
-            let mut cfg = ceramic_config::Config::default();
-            cfg.anchor = ceramic_config::Anchor::clay();
-            cfg.network = ceramic_config::Network::clay();
-            cfg
-        }
-        ProjectType::Production => {
-            let mut cfg = ceramic_config::Config::default();
-            cfg.anchor = ceramic_config::Anchor::mainnet();
-            cfg.network = ceramic_config::Network::mainnet();
-            cfg
-        }
+    let with_composedb = Confirm::new("Include ComposeDB?")
+        .with_default(false)
+        .prompt()?;
+
+    let doc = prompt::did::generate_did(&project.path).await?;
+
+    let cfg_file_path = project.path.join("ceramic.json");
+    let cfg_file_path = Text::new("Ceramic ceramic-config file location")
+        .with_default(cfg_file_path.to_string_lossy().as_ref())
+        .prompt()?;
+    let cfg_file_path = PathBuf::from(cfg_file_path);
+    let mut cfg = if cfg_file_path.exists() {
+        let data = tokio::fs::read(cfg_file_path.clone()).await?;
+        let cfg = serde_json::from_slice(data.as_slice())?;
+        cfg
+    } else {
+        ceramic_config::Config::default()
     };
 
-    install::compose_db::install_compose_db(&cfg, &project.path, &None).await?;
+    match ans {
+        ProjectType::Local => {
+            cfg.anchor = ceramic_config::Anchor::local();
+            cfg.network = ceramic_config::Network::local(&project.name);
+            prompt::prompt(&mut cfg, &doc, prompt::local_config).await?;
+        }
+        ProjectType::Advanced => {
+            prompt::prompt(&mut cfg, &doc, prompt::advanced_config).await?;
+        }
+        ProjectType::Test => {
+            cfg.anchor = ceramic_config::Anchor::clay();
+            cfg.network = ceramic_config::Network::clay();
+            prompt::prompt(&mut cfg, &doc, prompt::remote_config).await?;
+        }
+        ProjectType::Production => {
+            cfg.anchor = ceramic_config::Anchor::mainnet();
+            cfg.network = ceramic_config::Network::mainnet();
+            prompt::prompt(&mut cfg, &doc, prompt::remote_config).await?;
+        }
+    }
+
+    let mut f = tokio::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(cfg_file_path)
+        .await?;
+    f.write_all(serde_json::to_string(&cfg)?.as_bytes()).await?;
+    f.flush().await?;
+
+    install::ceramic_daemon::install_ceramic_daemon(&project.path, &None, with_composedb).await?;
+    install::kubo::install_kubo(&project.path, &None).await?;
+    install::compose_db::install_compose_db(&cfg, &doc, &project.path, &None).await?;
 
     if Confirm::new("Install ComposeDB App Template (Next.js)?")
         .with_default(false)

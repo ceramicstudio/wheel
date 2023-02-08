@@ -27,17 +27,14 @@ pub async fn install_kubo(
     working_directory: &Path,
     version: &Option<semver::Version>,
 ) -> anyhow::Result<()> {
-    log::info!("Checking for kubo");
-    if !Command::new("command")
-        .args(&["-v", "kubo"])
-        .status()
-        .await?
-        .success()
-    {
+    if let Err(_) = which::which("kubo") {
         let version = version
             .clone()
             .map(|v| v.to_string())
             .unwrap_or_else(|| "0.18.1".to_string());
+
+        log::info!("Installing kubo {}", version);
+
         let url = format!(
             "https://dist.ipfs.tech/kubo/v{}/kubo_v{}_{}.tar.gz",
             version, version, ARCH

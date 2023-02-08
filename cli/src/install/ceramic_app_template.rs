@@ -7,16 +7,6 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
 use tokio::process::Command;
 
 pub async fn install_ceramic_app_template(working_directory: &Path) -> anyhow::Result<()> {
-    log::info!("Checking for npx");
-    if !Command::new("command")
-        .args(&["-v", "npx"])
-        .status()
-        .await?
-        .success()
-    {
-        anyhow::bail!("npx was not found, please install node.js")
-    }
-
     log::info!("Cloning create-ceramic-app");
     let mut child = Command::new("npx")
         .args(&["@ceramicnetwork/create-ceramic-app", "clone"])

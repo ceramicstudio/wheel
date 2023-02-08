@@ -7,17 +7,8 @@ use tokio::process::Command;
 pub async fn install_ceramic_daemon(
     working_directory: &Path,
     version: &Option<semver::Version>,
+    with_ceramic: bool,
 ) -> anyhow::Result<()> {
-    log::info!("Checking for npm");
-    if !Command::new("command")
-        .args(&["-v", "npm"])
-        .status()
-        .await?
-        .success()
-    {
-        anyhow::bail!("npx was not found, please install node.js")
-    }
-
     log::info!("Installing ceramic cli");
     let mut program = "@ceramicnetwork/cli".to_string();
     if let Some(v) = version.as_ref() {
@@ -34,7 +25,12 @@ pub async fn install_ceramic_daemon(
     }
 
     log::info!("Starting ceramic as a daemon");
-    let out = Command::new("npx")
+    let mut cmd = Command::new("npx");
+    if with_ceramic {
+        cmd.env("CERAMIC_ENABLE_EXPERIMENTAL_COMPOSE_DB", "true");
+    }
+
+    let out = cmd
         .args(&["ceramic", "daemon"])
         .current_dir(working_directory)
         .output()

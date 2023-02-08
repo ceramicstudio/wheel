@@ -83,11 +83,25 @@ pub struct Network {
 
 impl Default for Network {
     fn default() -> Self {
-        Self::clay()
+        Self::dev()
     }
 }
 
 impl Network {
+    pub fn local(name: &str) -> Self {
+        Self {
+            name: format!("local-{}", name),
+            pubsub_topic: format!("/ceramic/local-topic-{}", name),
+        }
+    }
+
+    pub fn dev() -> Self {
+        Self {
+            name: "dev-unstable".to_string(),
+            pubsub_topic: "/ceramic/dev-unstable".to_string(),
+        }
+    }
+
     pub fn clay() -> Self {
         Self {
             name: "testnet-clay".to_string(),
@@ -97,8 +111,8 @@ impl Network {
 
     pub fn mainnet() -> Self {
         Self {
-            name: "testnet-clay".to_string(),
-            pubsub_topic: "/ceramic/testnet-clay".to_string(),
+            name: "mainnet".to_string(),
+            pubsub_topic: "/ceramic/mainnet".to_string(),
         }
     }
 }
@@ -114,22 +128,36 @@ pub struct Anchor {
 
 impl Default for Anchor {
     fn default() -> Self {
-        Self::clay()
+        Self::dev()
     }
 }
 
 impl Anchor {
+    pub fn local() -> Self {
+        Self {
+            anchor_service_url: "https://cas-qa.3boxlabs.com/".to_string(),
+            ethereum_rpc_url: "http://localhost:7545".to_string(),
+        }
+    }
+
+    pub fn dev() -> Self {
+        Self {
+            anchor_service_url: "https://cas-qa.3boxlabs.com/".to_string(),
+            ethereum_rpc_url: "http://localhost:7545".to_string(),
+        }
+    }
+
     pub fn clay() -> Self {
         Self {
             anchor_service_url: "https://cas-clay.3boxlabs.com/".to_string(),
-            ethereum_rpc_url: "https://quiet-cool-firefly.xdai.discover.quiknode.pro/d524192eabefb55f8a9911ff4dccce042f650ae0/".to_string(),
+            ethereum_rpc_url: "http://localhost:7545".to_string(),
         }
     }
 
     pub fn mainnet() -> Self {
         Self {
-            anchor_service_url: "https://cas-clay.3boxlabs.com/".to_string(),
-            ethereum_rpc_url: "https://quiet-cool-firefly.xdai.discover.quiknode.pro/d524192eabefb55f8a9911ff4dccce042f650ae0/".to_string(),
+            anchor_service_url: "https://cas.3boxlabs.com/".to_string(),
+            ethereum_rpc_url: "http://localhost:7545".to_string(),
         }
     }
 }
