@@ -87,7 +87,11 @@ jobs:
         run: rustup target add ${{ matrix.target }}
       - name: Run cargo zigbuild
         run: |
-          cargo zigbuild --target ${{ matrix.target }}
+          cargo zigbuild --release --target ${{ matrix.target }}
+      - name: Verify output
+        run: |
+          ls target/${{ matrix.target }}
+          ls target/${{ matrix.target }}/release
       - name: Archive artifact
         uses: actions/upload-artifact@v3
         with:
