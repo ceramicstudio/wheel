@@ -1,13 +1,13 @@
 use ceramic_config::*;
 use inquire::*;
 use ssi::did::Document;
-use std::path::PathBuf;
-use std::process::exit;
+use std::path::{Path, PathBuf};
 use tokio::io::AsyncWriteExt;
 
-pub async fn prompt(admin_did: Option<&Document>) -> anyhow::Result<Config> {
+pub async fn prompt(working_directory: &Path, admin_did: &Document) -> anyhow::Result<Config> {
+    let cfg_file_path = working_directory.join("ceramic.json");
     let cfg_file_path = Text::new("Ceramic ceramic-config file location")
-        .with_default("/etc/ceramic/ceramic.json")
+        .with_default(cfg_file_path.to_string_lossy().as_ref())
         .prompt()?;
     let cfg_file_path = PathBuf::from(cfg_file_path);
     let (mut cfg, existing) = if cfg_file_path.exists() {
@@ -112,7 +112,7 @@ async fn configure_state_store() -> anyhow::Result<StateStore> {
     Ok(r)
 }
 
-fn configure_http_api(admin_did: Option<&Document>) -> anyhow::Result<HttpApi> {
+fn configure_http_api(admin_did: &Document) -> anyhow::Result<HttpApi> {
     let mut http = HttpApi::default();
     http.hostname = Text::new("Bind address")
         .with_default(&http.hostname)
@@ -124,14 +124,7 @@ fn configure_http_api(admin_did: Option<&Document>) -> anyhow::Result<HttpApi> {
     let cors = Text::new("Cors origins, comma separated").prompt()?;
     let cors = cors.split(",").map(|s| s.trim().to_string()).collect();
     http.cors_allowed_origins = cors;
-    if let Some(did) = admin_did {
-        http.admin_dids = vec![did.id.clone()];
-    } else {
-        let dids = Text::new("Admin DIDs, comma separated").prompt()?;
-        //TODO: validate dids
-        let dids = dids.split(",").map(|s| s.trim().to_string()).collect();
-        http.admin_dids = dids;
-    }
+    http.admin_dids = vec![admin_did.id.clone()];
     Ok(http)
 }
 
@@ -157,24 +150,22 @@ fn configure_anchor() -> anyhow::Result<Anchor> {
     Ok(anchor)
 }
 
-fn configure_index() -> anyhow::Result<Index> {
-    let mut index = Index::default();
+fn configure_indexing() -> anyhow::Result<Indexing> {
+    let mut index = Indexing::default();
     index.db = Text::new("Database Url").with_default(&index.db).prompt()?;
-    index.allow_queries_before_historical_sync =
-        Confirm::new("Allow Queries Before Historical Sync").prompt()?;
     Ok(index)
 }
 
 async fn configure_ceramic<'a, 'b>(
     cfg: &'a mut Config,
-    admin_did: Option<&'b Document>,
+    admin_did: &'b Document,
 ) -> anyhow::Result<&'a mut Config> {
     cfg.ipfs = configure_ipfs()?;
     cfg.state_store = configure_state_store().await?;
     cfg.http_api = configure_http_api(admin_did)?;
     cfg.network = configure_network()?;
     cfg.anchor = configure_anchor()?;
-    cfg.index = configure_index()?;
+    cfg.indexing = configure_indexing()?;
 
     Ok(cfg)
 }

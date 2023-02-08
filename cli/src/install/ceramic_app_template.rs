@@ -1,20 +1,12 @@
-use std::io::BufRead;
+use crate::install::log_errors;
+
 use std::path::Path;
 use std::process::Stdio;
 
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
 use tokio::process::Command;
 
-fn log_errors(stdout: Vec<u8>) {
-    let out = std::io::Cursor::new(stdout);
-    for l in std::io::BufReader::new(out).lines() {
-        if let Ok(l) = l {
-            log::error!("{}", l);
-        }
-    }
-}
-
-pub async fn install_ceramic(name: &str, working_directory: &Path) -> anyhow::Result<()> {
+pub async fn install_ceramic_app_template(working_directory: &Path) -> anyhow::Result<()> {
     log::info!("Checking for npx");
     if !Command::new("command")
         .args(&["-v", "npx"])

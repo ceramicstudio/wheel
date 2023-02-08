@@ -83,9 +83,22 @@ pub struct Network {
 
 impl Default for Network {
     fn default() -> Self {
+        Self::clay()
+    }
+}
+
+impl Network {
+    pub fn clay() -> Self {
         Self {
-            name: "???".to_string(),
-            pubsub_topic: "???".to_string(),
+            name: "testnet-clay".to_string(),
+            pubsub_topic: "/ceramic/testnet-clay".to_string(),
+        }
+    }
+
+    pub fn mainnet() -> Self {
+        Self {
+            name: "testnet-clay".to_string(),
+            pubsub_topic: "/ceramic/testnet-clay".to_string(),
         }
     }
 }
@@ -101,26 +114,37 @@ pub struct Anchor {
 
 impl Default for Anchor {
     fn default() -> Self {
+        Self::clay()
+    }
+}
+
+impl Anchor {
+    pub fn clay() -> Self {
         Self {
-            anchor_service_url: "???".to_string(),
-            ethereum_rpc_url: "???".to_string(),
+            anchor_service_url: "https://cas-clay.3boxlabs.com/".to_string(),
+            ethereum_rpc_url: "https://quiet-cool-firefly.xdai.discover.quiknode.pro/d524192eabefb55f8a9911ff4dccce042f650ae0/".to_string(),
+        }
+    }
+
+    pub fn mainnet() -> Self {
+        Self {
+            anchor_service_url: "https://cas-clay.3boxlabs.com/".to_string(),
+            ethereum_rpc_url: "https://quiet-cool-firefly.xdai.discover.quiknode.pro/d524192eabefb55f8a9911ff4dccce042f650ae0/".to_string(),
         }
     }
 }
 
 #[wasm_bindgen]
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Index {
+pub struct Indexing {
     #[wasm_bindgen(getter_with_clone)]
     pub db: String,
-    pub allow_queries_before_historical_sync: bool,
 }
 
-impl Default for Index {
+impl Default for Indexing {
     fn default() -> Self {
         Self {
-            db: "???".to_string(),
-            allow_queries_before_historical_sync: false,
+            db: "pg://ceramic@localhost:5432/ceramic".to_string(),
         }
     }
 }
@@ -232,7 +256,7 @@ pub struct Config {
     #[wasm_bindgen(getter_with_clone)]
     pub anchor: Anchor,
     #[wasm_bindgen(getter_with_clone)]
-    pub index: Index,
+    pub indexing: Indexing,
     #[wasm_bindgen(skip)]
     pub did_resolvers: DidResolvers,
     #[wasm_bindgen(getter_with_clone)]
@@ -284,10 +308,6 @@ impl Config {
         }
     }
 
-    pub fn http_api(&self) -> HttpApi {
-        self.http_api.clone()
-    }
-
     pub fn cors_allowed_origins(&self) -> Vec<JsValue> {
         self.http_api
             .cors_allowed_origins
@@ -298,18 +318,6 @@ impl Config {
 
     pub fn admin_dids(&self) -> Vec<JsValue> {
         self.http_api.admin_dids.iter().map(JsValue::from).collect()
-    }
-
-    pub fn network(&self) -> Network {
-        self.network.clone()
-    }
-
-    pub fn index(&self) -> Index {
-        self.index.clone()
-    }
-
-    pub fn anchor(&self) -> Anchor {
-        self.anchor.clone()
     }
 
     pub fn state_store(&self) -> WasmStateStore {
@@ -341,10 +349,6 @@ impl Config {
         }
     }
 
-    pub fn node(&self) -> Node {
-        self.node.clone()
-    }
-
     pub fn logger(&self) -> WasmLogger {
         WasmLogger {
             level: self.logger.level,
@@ -353,10 +357,6 @@ impl Config {
                 directory: f.directory.to_string_lossy().to_string(),
             }),
         }
-    }
-
-    pub fn metrics(&self) -> Metrics {
-        self.metrics.clone()
     }
 }
 
@@ -388,7 +388,7 @@ mod tests {
         let js = serde_json::to_string(&Config::default()).unwrap();
         assert_eq!(
             &js,
-            r#"{"ipfs":"Bundled","state_store":{"LocalDirectory":"/etc/ceramic/data"},"http_api":{"hostname":"127.0.0.1","port":80,"cors_allowed_origins":[],"admin_dids":[]},"network":{"name":"???","pubsub_topic":"???"},"anchor":{"anchor_service_url":"???","ethereum_rpc_url":"???"},"index":{"db":"???","allow_queries_before_historical_sync":false},"did_resolvers":{"Ethr":{}},"node":{"gateway":false,"sync_override":false,"stream_cache_limit":100},"logger":{"file":{"enabled":true,"directory":"/var/log/ceramic"},"level":"Info"},"metrics":{"enabled":false,"host":"???"}}"#
+            r#"{"ipfs":"Bundled","state_store":{"LocalDirectory":"/etc/ceramic/data"},"http_api":{"hostname":"127.0.0.1","port":80,"cors_allowed_origins":[],"admin_dids":[]},"network":{"name":"???","pubsub_topic":"???"},"anchor":{"anchor_service_url":"???","ethereum_rpc_url":"???"},"indexing":{"db":"???"},"did_resolvers":{"Ethr":{}},"node":{"gateway":false,"sync_override":false,"stream_cache_limit":100},"logger":{"file":{"enabled":true,"directory":"/var/log/ceramic"},"level":"Info"},"metrics":{"enabled":false,"host":"???"}}"#
         );
         let _: Config = serde_json::from_str(&js).unwrap();
     }

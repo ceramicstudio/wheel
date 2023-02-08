@@ -113,7 +113,7 @@ jobs:
           git config user.email "github@3box.io"
           git config user.name "Github Automation"
           echo "tag="$(cargo metadata --format-version=1 --no-deps | jq '.packages[0].version') >> $GITHUB_OUTPUT
-          cargo release ${{ inputs.level }} -x --no-confirm
+          cargo release -vv ${{ inputs.level }} -x --no-confirm
 
   publish-release:
     needs: [bump-versions]
