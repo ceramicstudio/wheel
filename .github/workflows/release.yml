@@ -132,5 +132,5 @@ jobs:
           ls artifacts/**/*
       - name: create release
         run: |
-          gh release create v${{ needs.bump-versions.outputs.tag }} --latest artifacts/**/*
+          gh release create --title "v"${{ needs.bump-versions.outputs.tag }} --latest artifacts/**/*
 
