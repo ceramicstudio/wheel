@@ -127,7 +127,10 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           path: artifacts
+      - name: check artifacts
+        run: |
+          ls artifacts/**/*
       - name: create release
         run: |
-          gh release create v${{ needs.bump-versions.outputs.tag }} --latest artifacts/*
+          gh release create v${{ needs.bump-versions.outputs.tag }} --latest artifacts/**/*
 
