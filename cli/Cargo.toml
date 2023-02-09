@@ -8,7 +8,7 @@ publish = false
 
 [dependencies]
 anyhow = "1.0.68"
-ceramic-config = { path = "../ceramic-config", version = "0.1.19" }
+ceramic-config = { path = "../ceramic-config", version = "0.1.21" }
 clap = { version = "4.1.4", features = ["derive"] }
 ed25519-compact = "2.0.4"
 env_logger = "0.10.0"
