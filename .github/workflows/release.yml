@@ -90,7 +90,7 @@ jobs:
           cargo zigbuild --release --target ${{ matrix.target }}
       - name: Compress artifacts
         run: |
-          tar -cvzf wheel_${{ matrix.target }} -C target/${{ matrix.target }}/release wheel
+          tar -cvzf wheel_${{ matrix.target }}.tar.gz -C iarget/${{ matrix.target }}/release wheel
       - name: Archive artifact
         uses: actions/upload-artifact@v3
         with:
