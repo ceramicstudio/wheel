@@ -88,12 +88,15 @@ jobs:
       - name: Run cargo zigbuild
         run: |
           cargo zigbuild --release --target ${{ matrix.target }}
+      - name: Compress artifacts
+        run: |
+          tar -cvzf wheel_${{ matrix.target }} -C target/${{ matrix.target }}/release wheel
       - name: Archive artifact
         uses: actions/upload-artifact@v3
         with:
           name: wheel_${{ matrix.target }}
           path: |
-            target/${{ matrix.target }}/release/wheel
+            wheel_${{ matrix.target }}.tar.gz
 
   bump-versions:
     needs: [publish-ceramic-config-wasm, build-binaries]
@@ -114,7 +117,7 @@ jobs:
         run: |
           git config user.email "github@3box.io"
           git config user.name "Github Automation"
-          echo "tag="$(cargo metadata --format-version=1 --no-deps | jq '.packages[0].version') >> $GITHUB_OUTPUT
+          echo "tag="$(cargo metadata --format-version=1 --no-deps | jq '.packages[0].version' | tr -d '"') >> $GITHUB_OUTPUT
           cargo release -vv ${{ inputs.level }} -x --no-confirm
 
   publish-release:
@@ -129,8 +132,9 @@ jobs:
           path: artifacts
       - name: check artifacts
         run: |
-          ls artifacts/**/*
+          ls artifacts/**/*.tar.gz
       - name: create release
         run: |
-          gh release create v${{ needs.bump-versions.outputs.tag }} --title "v"${{ needs.bump-versions.outputs.tag }} --latest artifacts/**/*
+          echo "Creating release for "${{ need.bump-versions.outputs.tag }}
+          gh release create v${{ needs.bump-versions.outputs.tag }} --title "v"${{ needs.bump-versions.outputs.tag }} --latest artifacts/**/*.tar.gz
 
