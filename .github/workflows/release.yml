@@ -88,10 +88,6 @@ jobs:
       - name: Run cargo zigbuild
         run: |
           cargo zigbuild --release --target ${{ matrix.target }}
-      - name: Verify output
-        run: |
-          ls target/${{ matrix.target }}
-          ls target/${{ matrix.target }}/release
       - name: Archive artifact
         uses: actions/upload-artifact@v3
         with:
@@ -108,6 +104,8 @@ jobs:
       tag: ${{ steps.release.outputs.tag }}
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       - id: install-cargo-release
         uses: taiki-e/install-action@v1
         with:
