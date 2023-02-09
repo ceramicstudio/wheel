@@ -18,8 +18,12 @@ then
     exit
 fi
 
-REPO=dbcfd/wheel/releases/latest
+REPO=dbcfd/wheel/releases
 ARCH=$(uname -m)
+if [[ $ARCH == 'arm64' ]]
+then
+  ARCH=aarch64
+fi
 OS=unknown-linux-gnu
 if [[ $OSTYPE == 'darwin'* ]]
 then
@@ -27,20 +31,16 @@ then
 fi
 TARGET=$ARCH-$OS
 
-VERSION=$(curl https://api.github.com/repos/$REPO -s |  jq .name -r)
-TAR_NAME=wheel-$VERSION-$TARGET
-OUTPUT_FILE=wheel.tar.xz
-DOWNLOAD_URL=https://github.com/$REPO/download/$TAR_NAME.tar.xz
+VERSION=$(curl https://api.github.com/repos/$REPO/latest -s |  jq .name -r)
+TAR_NAME=wheel_$TARGET.tar.gz
+OUTPUT_FILE=wheel.tar.gz
+DOWNLOAD_URL=https://github.com/$REPO/download/$VERSION/$TAR_NAME
 
 echo "Downloading wheel for target "$TARGET" from "$DOWNLOAD_URL
 
-curl -LJO --output $OUTPUT_FILE $DOWNLOAD_URL
+curl -LJ0 --output $OUTPUT_FILE $DOWNLOAD_URL
 
 tar -xvf $OUTPUT_FILE
 rm $OUTPUT_FILE
-
-mv $TAR_NAME wheel
-
-cd wheel
 
 ./wheel "$@"
