@@ -1,6 +1,6 @@
-use crate::install::log_errors;
-
+use inquire::*;
 use std::path::Path;
+use std::process::Stdio;
 
 use tokio::process::Command;
 
@@ -24,20 +24,24 @@ pub async fn install_ceramic_daemon(
         anyhow::bail!("Failed to install ceramic cli");
     }
 
-    log::info!("Starting ceramic as a daemon");
-    let mut cmd = Command::new("npx");
-    if with_ceramic {
-        cmd.env("CERAMIC_ENABLE_EXPERIMENTAL_COMPOSE_DB", "true");
-    }
+    let ans = Confirm::new(&format!("Would you like ceramic started as a daemon?"))
+        .with_default(true)
+        .prompt()?;
 
-    let out = cmd
-        .args(&["ceramic", "daemon"])
-        .current_dir(working_directory)
-        .output()
-        .await?;
-    if !out.status.success() {
-        log_errors(out.stdout);
-        anyhow::bail!("Failed to start ceramic daemon");
+    if ans {
+        log::info!("Starting ceramic as a daemon");
+        let mut cmd = Command::new("npx");
+        if with_ceramic {
+            cmd.env("CERAMIC_ENABLE_EXPERIMENTAL_COMPOSE_DB", "true");
+        }
+
+        cmd.args(&["ceramic", "daemon"])
+            .current_dir(working_directory)
+            .kill_on_drop(false)
+            .stdout(Stdio::null())
+            .spawn()?;
+    } else {
+        log::info!("When you would like to run ceramic please run `CERAMIC_ENABLE_EXPERIMENTAL_COMPOSE_DB=true npx ceramic daemon`");
     }
 
     Ok(())

@@ -38,7 +38,7 @@ pub async fn install_compose_db(
         .await?;
     f.flush().await?;
 
-    log::info!("ComposeDB cli now available. To properly use composedb, please use the following command `composedb --did-private-key={} --ceramic-url={}`", admin_did.id.to_string(), hostname);
+    log::info!("ComposeDB cli now available. To properly use composedb, please use the following command \n\ncomposedb --did-private-key={} --ceramic-url={}\n\n", admin_did.id.to_string(), hostname);
 
     Ok(())
 }

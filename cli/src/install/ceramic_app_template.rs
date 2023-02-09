@@ -49,21 +49,5 @@ pub async fn install_ceramic_app_template(working_directory: &Path) -> anyhow::R
         anyhow::bail!("Failed to install ceramic dependencies");
     }
 
-    log::info!("Starting ceramic as a daemon");
-    let out = Command::new("npx")
-        .args(&[
-            "@ceramicnetworkcli/daemon",
-            "daemon",
-            "--network",
-            "inmemory",
-        ]) //TODO: Check on this command flag
-        .current_dir(&ceramic_dir)
-        .output()
-        .await?;
-    if !out.status.success() {
-        log_errors(out.stdout);
-        anyhow::bail!("Failed to start ceramic daemon");
-    }
-
     Ok(())
 }
