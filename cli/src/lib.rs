@@ -104,8 +104,8 @@ pub async fn interactive() -> anyhow::Result<()> {
     f.write_all(serde_json::to_string(&cfg)?.as_bytes()).await?;
     f.flush().await?;
 
-    install::ceramic_daemon::install_ceramic_daemon(&project.path, &None, with_composedb).await?;
     install::kubo::install_kubo(&project.path, &None).await?;
+    install::ceramic_daemon::install_ceramic_daemon(&project.path, &None, with_composedb).await?;
     install::compose_db::install_compose_db(&cfg, &doc, &project.path, &None).await?;
 
     if Confirm::new("Install ComposeDB App Template (Next.js)?")
