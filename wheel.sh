@@ -18,7 +18,7 @@ then
     exit
 fi
 
-REPO=dbcfd/wheel/releases
+REPO=3box/wheel/releases
 ARCH=$(uname -m)
 if [[ $ARCH == 'arm64' ]]
 then
