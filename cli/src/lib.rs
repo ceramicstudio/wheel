@@ -99,13 +99,19 @@ pub async fn interactive() -> anyhow::Result<()> {
     let mut f = tokio::fs::OpenOptions::new()
         .write(true)
         .create(true)
-        .open(cfg_file_path)
+        .open(&cfg_file_path)
         .await?;
     f.write_all(serde_json::to_string(&cfg)?.as_bytes()).await?;
     f.flush().await?;
 
-    install::kubo::install_kubo(&project.path, &None).await?;
-    install::ceramic_daemon::install_ceramic_daemon(&project.path, &None, with_composedb).await?;
+    //install::kubo::install_kubo(&project.path, &None).await?;
+    install::ceramic_daemon::install_ceramic_daemon(
+        &project.path,
+        &cfg_file_path,
+        &None,
+        with_composedb,
+    )
+    .await?;
     install::compose_db::install_compose_db(&cfg, &doc, &project.path, &None).await?;
 
     if Confirm::new("Install ComposeDB App Template (Next.js)?")

@@ -38,7 +38,17 @@ pub async fn install_compose_db(
         .await?;
     f.flush().await?;
 
-    log::info!("ComposeDB cli now available. To properly use composedb, please use the following command \n\ncomposedb --did-private-key={} --ceramic-url={}\n\n", admin_did.id.to_string(), hostname);
+    log::info!(
+        r#"ComposeDB cli now available. To properly use composedb, you will need to update your environment
+
+    source composedb.env
+
+You can then run composedb with
+
+    cd ${}
+    $(npm bin)/composedb"#,
+        working_directory.to_string_lossy()
+    );
 
     Ok(())
 }

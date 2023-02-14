@@ -1,7 +1,7 @@
 pub mod ceramic_app_template;
 pub mod ceramic_daemon;
 pub mod compose_db;
-pub mod kubo;
+//pub mod kubo;
 
 use std::io::BufRead;
 
