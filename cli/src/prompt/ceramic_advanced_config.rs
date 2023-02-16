@@ -12,7 +12,7 @@ where
     Fut: std::future::Future<Output = anyhow::Result<()>>,
     Fn: FnMut(&'a mut Config, &'b Document) -> Fut,
 {
-    let ans = Confirm::new(&format!("Start ceramic configuration?"))
+    let ans = Confirm::new(&format!("Step through ceramic configuration?"))
         .with_help_message("Step through interactive prompts to configure ceramic node")
         .prompt_skippable()?;
 
@@ -23,28 +23,14 @@ where
     Ok(())
 }
 
-enum IpfsSelect {
-    Bundled,
-    Remote,
-}
-
-impl std::fmt::Display for IpfsSelect {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Bundled => write!(f, "Bundled"),
-            Self::Remote => write!(f, "Remote"),
-        }
-    }
-}
-
 pub fn configure_ipfs(cfg: &mut Config) -> anyhow::Result<()> {
     let ans = Select::new(
         "Bundled or Remote IPFS (default=Bundled)",
-        vec![IpfsSelect::Bundled, IpfsSelect::Remote],
+        vec![Ipfs::Bundled, Ipfs::Remote(IpfsRemote::default())],
     )
     .prompt()?;
 
-    let r = if let IpfsSelect::Remote = ans {
+    let r = if let Ipfs::Remote(_) = ans {
         let ipfs = IpfsRemote {
             host: Text::new("IPFS Hostname").prompt()?,
         };
@@ -118,12 +104,28 @@ pub fn configure_http_api(cfg: &mut Config, admin_did: &Document) -> anyhow::Res
 }
 
 fn configure_network(cfg: &mut Config) -> anyhow::Result<()> {
-    cfg.network.name = Text::new("Network name")
-        .with_default(&cfg.network.name)
-        .prompt()?;
-    cfg.network.pubsub_topic = Text::new("Pubsub Topic")
-        .with_default(&cfg.network.pubsub_topic)
-        .prompt()?;
+    cfg.network.id = Select::new(
+        "Network type",
+        vec![
+            NetworkIdentifier::InMemory,
+            NetworkIdentifier::Local,
+            NetworkIdentifier::Dev,
+            NetworkIdentifier::Clay,
+            NetworkIdentifier::Mainnet,
+        ],
+    )
+    .with_starting_cursor(3)
+    .prompt()?;
+    match cfg.network.id {
+        NetworkIdentifier::Local | NetworkIdentifier::Dev => {
+            cfg.network.pubsub_topic = Text::new("Pubsub Topic")
+                .with_default(&cfg.network.pubsub_topic)
+                .prompt()?;
+        }
+        _ => {
+            //doesn't use pubsub topic
+        }
+    }
     Ok(())
 }
 
@@ -138,9 +140,16 @@ fn configure_anchor(cfg: &mut Config) -> anyhow::Result<()> {
 }
 
 pub fn configure_indexing(cfg: &mut Config) -> anyhow::Result<()> {
-    cfg.indexing.db = Text::new("Database Url")
+    cfg.indexing.db = Text::new("Database Connection String")
+        .with_help_message("Support Postgresql and Sqlite. Sqlite is not allowed on production")
         .with_default(&cfg.indexing.db)
         .prompt()?;
+    if !cfg.allows_sqlite() {
+        if cfg.indexing.db.starts_with("sqlite") {
+            anyhow::bail!("sqlite not allowed in environment {}", cfg.network.id);
+        }
+    }
+
     Ok(())
 }
 

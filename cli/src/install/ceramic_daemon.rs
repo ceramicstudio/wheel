@@ -2,14 +2,20 @@ use inquire::*;
 use std::path::Path;
 use std::process::Stdio;
 
+use crate::install::log_async_errors;
+use crate::install::verify_postgres::verify_postgres;
+use ceramic_config::Config;
+use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 
 pub async fn install_ceramic_daemon(
     working_directory: &Path,
-    cfg_file_path: &Path,
+    cfg: &Config,
     version: &Option<semver::Version>,
     with_ceramic: bool,
 ) -> anyhow::Result<()> {
+    verify_postgres(&cfg).await?;
+
     log::info!("Installing ceramic cli");
     let mut program = "@ceramicnetwork/cli".to_string();
     if let Some(v) = version.as_ref() {
@@ -25,6 +31,17 @@ pub async fn install_ceramic_daemon(
         anyhow::bail!("Failed to install ceramic cli");
     }
 
+    let cfg_file_path = working_directory.join("daemon_config.json");
+    let daemon_config: ceramic_config::DaemonConfig = cfg.clone().into();
+    let mut f = tokio::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(&cfg_file_path)
+        .await?;
+    f.write_all(serde_json::to_string(&daemon_config)?.as_bytes())
+        .await?;
+    f.flush().await?;
+
     let ans = Confirm::new(&format!("Would you like ceramic started as a daemon?"))
         .with_default(true)
         .prompt()?;
@@ -36,16 +53,33 @@ pub async fn install_ceramic_daemon(
             cmd.env("CERAMIC_ENABLE_EXPERIMENTAL_COMPOSE_DB", "true");
         }
 
-        cmd.args(&[
-            "ceramic",
-            "daemon",
-            "--config",
-            cfg_file_path.to_string_lossy().as_ref(),
-        ])
-        .current_dir(working_directory)
-        .kill_on_drop(false)
-        .stdout(Stdio::null())
-        .spawn()?;
+        let mut process = cmd
+            .args(&[
+                "ceramic",
+                "daemon",
+                "--config",
+                cfg_file_path.to_string_lossy().as_ref(),
+            ])
+            .current_dir(working_directory)
+            .kill_on_drop(false)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()?;
+
+        tokio::spawn(async move {
+            let err = process.stderr.take();
+            if let Ok(exit) = process.wait().await {
+                log::info!(
+                    "Ceramic exited with code {}",
+                    exit.code().unwrap_or_else(|| 0)
+                );
+                if !exit.success() {
+                    if let Some(err) = err {
+                        log_async_errors(err).await;
+                    }
+                }
+            }
+        });
     } else {
         log::info!("When you would like to run ceramic please run `CERAMIC_ENABLE_EXPERIMENTAL_COMPOSE_DB=true npx ceramic daemon`");
     }

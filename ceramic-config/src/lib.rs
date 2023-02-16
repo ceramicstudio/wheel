@@ -1,3 +1,8 @@
+mod convert;
+mod daemon;
+
+pub use daemon::DaemonConfig;
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -16,10 +21,27 @@ pub struct IpfsRemote {
     pub host: String,
 }
 
+impl Default for IpfsRemote {
+    fn default() -> Self {
+        Self {
+            host: "/ipfs".to_string(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum Ipfs {
     Bundled,
     Remote(IpfsRemote),
+}
+
+impl std::fmt::Display for Ipfs {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Bundled => write!(f, "Bundled"),
+            Self::Remote(_) => write!(f, "Remote"),
+        }
+    }
 }
 
 impl Default for Ipfs {
@@ -65,7 +87,7 @@ impl Default for HttpApi {
     fn default() -> Self {
         Self {
             hostname: std::net::Ipv4Addr::LOCALHOST.to_string(),
-            port: 80,
+            port: 7071,
             cors_allowed_origins: vec![],
             admin_dids: vec![],
         }
@@ -73,10 +95,38 @@ impl Default for HttpApi {
 }
 
 #[wasm_bindgen]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub enum NetworkIdentifier {
+    InMemory,
+    Local,
+    Dev,
+    Clay,
+    Mainnet,
+}
+
+impl std::fmt::Display for NetworkIdentifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InMemory => write!(f, "InMemory"),
+            Self::Local => write!(f, "Local"),
+            Self::Dev => write!(f, "Dev"),
+            Self::Clay => write!(f, "Clay"),
+            Self::Mainnet => write!(f, "Mainnet"),
+        }
+    }
+}
+
+impl Default for NetworkIdentifier {
+    fn default() -> Self {
+        Self::Clay
+    }
+}
+
+#[wasm_bindgen]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Network {
     #[wasm_bindgen(getter_with_clone)]
-    pub name: String,
+    pub id: NetworkIdentifier,
     #[wasm_bindgen(getter_with_clone)]
     pub pubsub_topic: String,
 }
@@ -90,28 +140,28 @@ impl Default for Network {
 impl Network {
     pub fn local(name: &str) -> Self {
         Self {
-            name: format!("local-{}", name),
+            id: NetworkIdentifier::Local,
             pubsub_topic: format!("/ceramic/local-topic-{}", name),
         }
     }
 
     pub fn dev() -> Self {
         Self {
-            name: "dev-unstable".to_string(),
+            id: NetworkIdentifier::Dev,
             pubsub_topic: "/ceramic/dev-unstable".to_string(),
         }
     }
 
     pub fn clay() -> Self {
         Self {
-            name: "testnet-clay".to_string(),
+            id: NetworkIdentifier::Clay,
             pubsub_topic: "/ceramic/testnet-clay".to_string(),
         }
     }
 
     pub fn mainnet() -> Self {
         Self {
-            name: "mainnet".to_string(),
+            id: NetworkIdentifier::Mainnet,
             pubsub_topic: "/ceramic/mainnet".to_string(),
         }
     }
@@ -172,14 +222,13 @@ pub struct Indexing {
 impl Default for Indexing {
     fn default() -> Self {
         Self {
-            db: "pg://ceramic@localhost:5432/ceramic".to_string(),
+            db: "postgres://ceramic@localhost:5432/ceramic".to_string(),
         }
     }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum DidResolvers {
-    Safe(HashMap<String, serde_json::Value>),
     Ethr(HashMap<String, serde_json::Value>),
 }
 
@@ -216,7 +265,7 @@ pub struct FileLogger {
 impl Default for FileLogger {
     fn default() -> Self {
         Self {
-            enabled: true,
+            enabled: false,
             directory: PathBuf::from("/var/log/ceramic"),
         }
     }
@@ -362,19 +411,8 @@ impl Config {
     }
 
     pub fn eth_resolver_options(&self) -> Option<String> {
-        if let DidResolvers::Ethr(m) = &self.did_resolvers {
-            Some(serde_json::to_string(m).unwrap_or_else(|_| String::default()))
-        } else {
-            None
-        }
-    }
-
-    pub fn safe_resolver_options(&self) -> Option<String> {
-        if let DidResolvers::Safe(m) = &self.did_resolvers {
-            Some(serde_json::to_string(m).unwrap_or_else(|_| String::default()))
-        } else {
-            None
-        }
+        let DidResolvers::Ethr(m) = &self.did_resolvers;
+        Some(serde_json::to_string(m).unwrap_or_else(|_| String::default()))
     }
 
     pub fn logger(&self) -> WasmLogger {
@@ -385,6 +423,10 @@ impl Config {
                 directory: f.directory.to_string_lossy().to_string(),
             }),
         }
+    }
+
+    pub fn allows_sqlite(&self) -> bool {
+        self.network.id != NetworkIdentifier::Mainnet
     }
 }
 
