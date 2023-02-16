@@ -46,7 +46,9 @@ pub async fn install_compose_db(
 
 You can then run composedb with
 
-    $(npm bin)/composedb"#,
+    npx composedb
+    
+For more information on composedb and commands to run, see https://composedb.js.org/docs/0.3.x/first-composite"#,
         working_directory.to_string_lossy()
     );
 

@@ -3,7 +3,7 @@ use std::path::Path;
 use std::process::Stdio;
 
 use crate::install::log_async_errors;
-use crate::install::verify_postgres::verify_postgres;
+use crate::install::verify_db;
 use ceramic_config::Config;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
@@ -14,7 +14,18 @@ pub async fn install_ceramic_daemon(
     version: &Option<semver::Version>,
     with_ceramic: bool,
 ) -> anyhow::Result<()> {
-    verify_postgres(&cfg).await?;
+    verify_db::verify(&cfg).await?;
+
+    if let Some(file_logger) = &cfg.logger.file {
+        if file_logger.enabled && !file_logger.directory.exists() {
+            let path_to_create = if file_logger.directory.is_absolute() {
+                file_logger.directory.clone()
+            } else {
+                working_directory.join(&file_logger.directory)
+            };
+            tokio::fs::create_dir_all(path_to_create).await?;
+        }
+    }
 
     log::info!("Installing ceramic cli");
     let mut program = "@ceramicnetwork/cli".to_string();
@@ -36,6 +47,7 @@ pub async fn install_ceramic_daemon(
     let mut f = tokio::fs::OpenOptions::new()
         .write(true)
         .create(true)
+        .append(false)
         .open(&cfg_file_path)
         .await?;
     f.write_all(serde_json::to_string(&daemon_config)?.as_bytes())

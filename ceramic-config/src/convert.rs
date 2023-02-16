@@ -68,7 +68,7 @@ impl Into<crate::daemon::DaemonConfig> for crate::Config {
             None
         };
         let network = Some(crate::daemon::DaemonNetworkConfig {
-            network: Some(convert_network_identifier(self.network.id)),
+            name: Some(convert_network_identifier(self.network.id)),
             pubsub_topic: pubsub_topic,
         });
         let node = Some(crate::daemon::DaemonNodeConfig {

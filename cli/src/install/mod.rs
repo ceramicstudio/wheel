@@ -2,7 +2,7 @@ pub mod ceramic_app_template;
 pub mod ceramic_daemon;
 pub mod compose_db;
 //pub mod kubo;
-mod verify_postgres;
+mod verify_db;
 
 use std::io::BufRead;
 use tokio::io::AsyncBufReadExt;

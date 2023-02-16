@@ -57,7 +57,7 @@ pub struct DaemonHttpApiConfig {
 #[serde(rename_all = "kebab-case")]
 pub struct DaemonNetworkConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub network: Option<String>,
+    pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pubsub_topic: Option<String>,
 }

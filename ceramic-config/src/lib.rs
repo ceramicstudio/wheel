@@ -222,7 +222,7 @@ pub struct Indexing {
 impl Default for Indexing {
     fn default() -> Self {
         Self {
-            db: "postgres://ceramic@localhost:5432/ceramic".to_string(),
+            db: "postgres://ceramic:password@localhost:5432/ceramic".to_string(),
         }
     }
 }
@@ -265,8 +265,8 @@ pub struct FileLogger {
 impl Default for FileLogger {
     fn default() -> Self {
         Self {
-            enabled: false,
-            directory: PathBuf::from("/var/log/ceramic"),
+            enabled: true,
+            directory: PathBuf::from("./log/ceramic"),
         }
     }
 }
