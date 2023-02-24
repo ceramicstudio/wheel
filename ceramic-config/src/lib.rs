@@ -128,7 +128,7 @@ pub struct Network {
     #[wasm_bindgen(getter_with_clone)]
     pub id: NetworkIdentifier,
     #[wasm_bindgen(getter_with_clone)]
-    pub pubsub_topic: String,
+    pub pubsub_topic: Option<String>,
 }
 
 impl Default for Network {
@@ -138,31 +138,37 @@ impl Default for Network {
 }
 
 impl Network {
+    pub fn in_memory() -> Self {
+        Self {
+            id: NetworkIdentifier::InMemory,
+            pubsub_topic: None,
+        }
+    }
     pub fn local(name: &str) -> Self {
         Self {
             id: NetworkIdentifier::Local,
-            pubsub_topic: format!("/ceramic/local-topic-{}", name),
+            pubsub_topic: Some(format!("/ceramic/local-topic-{}", name)),
         }
     }
 
     pub fn dev() -> Self {
         Self {
             id: NetworkIdentifier::Dev,
-            pubsub_topic: "/ceramic/dev-unstable".to_string(),
+            pubsub_topic: None, //"/ceramic/dev-unstable".to_string(),
         }
     }
 
     pub fn clay() -> Self {
         Self {
             id: NetworkIdentifier::Clay,
-            pubsub_topic: "/ceramic/testnet-clay".to_string(),
+            pubsub_topic: None, //"/ceramic/testnet-clay".to_string(),
         }
     }
 
     pub fn mainnet() -> Self {
         Self {
             id: NetworkIdentifier::Mainnet,
-            pubsub_topic: "/ceramic/mainnet".to_string(),
+            pubsub_topic: None, //"/ceramic/mainnet".to_string(),
         }
     }
 }
@@ -183,6 +189,13 @@ impl Default for Anchor {
 }
 
 impl Anchor {
+    pub fn in_memory() -> Self {
+        Self {
+            anchor_service_url: "https://localhost:8081/".to_string(),
+            ethereum_rpc_url: "http://localhost:7545".to_string(),
+        }
+    }
+
     pub fn local() -> Self {
         Self {
             anchor_service_url: "https://cas-qa.3boxlabs.com/".to_string(),
@@ -249,7 +262,7 @@ pub struct Node {
 impl Default for Node {
     fn default() -> Self {
         Self {
-            gateway: false,
+            gateway: true,
             sync_override: false,
             stream_cache_limit: 100,
         }

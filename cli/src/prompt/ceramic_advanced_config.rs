@@ -118,9 +118,11 @@ fn configure_network(cfg: &mut Config) -> anyhow::Result<()> {
     .prompt()?;
     match cfg.network.id {
         NetworkIdentifier::Local | NetworkIdentifier::Dev => {
-            cfg.network.pubsub_topic = Text::new("Pubsub Topic")
-                .with_default(&cfg.network.pubsub_topic)
+            let topic = cfg.network.pubsub_topic.clone().unwrap_or_else(|| format!("/ceramic/local-{}", std::time::Instant::now().elapsed().as_millis()));
+            let topic = Text::new("Pubsub Topic")
+                .with_default(&topic)
                 .prompt()?;
+            cfg.network.pubsub_topic = Some(topic);
         }
         _ => {
             //doesn't use pubsub topic
@@ -136,6 +138,14 @@ fn configure_anchor(cfg: &mut Config) -> anyhow::Result<()> {
     cfg.anchor.ethereum_rpc_url = Text::new("Ethereum RPC Url")
         .with_default(&cfg.anchor.ethereum_rpc_url)
         .prompt()?;
+    Ok(())
+}
+
+pub fn configure_node(cfg: &mut Config) -> anyhow::Result<()> {
+    let gateway = Confirm::new("Run as gateway?")
+        .with_default(true)
+        .prompt()?;
+    cfg.node.gateway = gateway;
     Ok(())
 }
 
@@ -159,6 +169,7 @@ pub async fn configure<'a, 'b>(cfg: &'a mut Config, admin_did: &'b Document) -> 
     configure_http_api(cfg, admin_did)?;
     configure_network(cfg)?;
     configure_anchor(cfg)?;
+    configure_node(cfg)?;
     configure_indexing(cfg)?;
 
     Ok(())

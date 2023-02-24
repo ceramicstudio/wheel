@@ -6,7 +6,7 @@ use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
 use tokio::process::Command;
 
-pub async fn install_ceramic_app_template(working_directory: &Path) -> anyhow::Result<()> {
+pub async fn install_ceramic_app_template(working_directory: &Path, _version: &Option<semver::Version>) -> anyhow::Result<()> {
     log::info!("Cloning create-ceramic-app");
     let mut child = Command::new("npx")
         .args(&["@ceramicnetwork/create-ceramic-app", "clone"])

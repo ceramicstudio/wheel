@@ -7,7 +7,13 @@ Run the following to install wheel
 
     curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/dbcfd/wheel/main/wheel.sh | bash
 
-Please follow the instructions that follow
+Please follow the instructions that follow.
+
+If you don't want to step through prompts at all, you can use wheel in "default" mode
+
+    wheel --working-directory <path to setup your work in> --network <one of local|dev|clay|mainnet> --no-interactive
+
+Please run `wheel --help` for more options.
 
 ## Setting up Postgres
 For production ceramic nodes, postgres is required. Visit https://www.postgresql.org/download/ to install postgres.

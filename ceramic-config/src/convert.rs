@@ -62,14 +62,9 @@ impl Into<crate::daemon::DaemonConfig> for crate::Config {
             metrics_exporter_enabled: Some(self.metrics.enabled),
             collector_host: Some(self.metrics.host),
         });
-        let pubsub_topic = if let NetworkIdentifier::Dev = self.network.id {
-            Some(self.network.pubsub_topic)
-        } else {
-            None
-        };
         let network = Some(crate::daemon::DaemonNetworkConfig {
             name: Some(convert_network_identifier(self.network.id)),
-            pubsub_topic: pubsub_topic,
+            pubsub_topic: self.network.pubsub_topic,
         });
         let node = Some(crate::daemon::DaemonNodeConfig {
             sync_override: None,

@@ -1,13 +1,28 @@
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use log::LevelFilter;
+use std::path::PathBuf;
+
+#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
+enum Network {
+    Local,
+    Dev,
+    Clay,
+    Mainnet
+}
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct ProgramArgs {
-    #[arg(long, short = 'i', default_value_t = true)]
-    interactive: bool,
+    #[arg(long, short = 'n')]
+    network: Option<Network>,
     #[arg(long, short = 'd')]
     working_directory: Option<String>,
+    #[arg(long)]
+    ceramic_version: Option<String>,
+    #[arg(long)]
+    composedb_version: Option<String>,
+    #[arg(long, short = 'y', default_value_t = false)]
+    no_interactive: bool,
 }
 
 #[tokio::main]
@@ -16,10 +31,31 @@ async fn main() -> anyhow::Result<()> {
         .filter_level(LevelFilter::Info)
         .try_init();
     let args = ProgramArgs::parse();
+    let current_directory = std::env::current_dir()?;
+    let working_directory = args.working_directory.map(PathBuf::from).unwrap_or_else(|| current_directory);
+    let mut versions = wheel_3box::Versions::default();
+    if let Some(v)= args.ceramic_version {
+        versions.ceramic = Some(v.parse()?);
+    }
+    if let Some(v) = args.composedb_version {
+        versions.composedb = Some(v.parse()?);
+    }
 
-    if args.interactive {
-        log::info!("Starting interactive configuration");
-        wheel_3box::interactive().await?;
+    if let Some(network) = args.network {
+        let project_type = match network {
+            Network::Local => wheel_3box::ProjectType::Local,
+            Network::Dev => wheel_3box::ProjectType::Dev,
+            Network::Clay => wheel_3box::ProjectType::Test,
+            Network::Mainnet => wheel_3box::ProjectType::Production,
+        };
+        if args.no_interactive {
+            wheel_3box::default_for_project_type(working_directory, project_type, versions).await?;
+        } else {
+            wheel_3box::for_project_type(working_directory, project_type, versions).await?;
+        }
+    } else {
+        log::info!("No network specified, starting interactive configuration");
+        wheel_3box::interactive(working_directory, versions).await?;
     }
 
     Ok(())
