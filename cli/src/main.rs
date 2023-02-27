@@ -46,7 +46,7 @@ async fn main() -> anyhow::Result<()> {
         versions.composedb = Some(v.parse()?);
     }
 
-    if let Some(network) = args.network {
+    let opt_child = if let Some(network) = args.network {
         let project_type = match network {
             Network::Local => wheel_3box::ProjectType::Local,
             Network::Dev => wheel_3box::ProjectType::Dev,
@@ -60,13 +60,18 @@ async fn main() -> anyhow::Result<()> {
                 versions,
                 args.with_compose_db,
             )
-            .await?;
+            .await?
         } else {
-            wheel_3box::for_project_type(working_directory, project_type, versions).await?;
+            wheel_3box::for_project_type(working_directory, project_type, versions).await?
         }
     } else {
         log::info!("No network specified, starting interactive configuration");
-        wheel_3box::interactive(working_directory, versions).await?;
+        wheel_3box::interactive(working_directory, versions).await?
+    };
+
+    if let Some(child) = opt_child {
+        log::info!("Ceramic is now running in the background. Please use another terminal for additional commands.");
+        child.await?;
     }
 
     Ok(())

@@ -5,7 +5,7 @@ mod prompt;
 use inquire::*;
 use prompt::project::Project;
 use std::path::PathBuf;
-use tokio::io::AsyncWriteExt;
+use tokio::{io::AsyncWriteExt, task::JoinHandle};
 
 #[derive(Default)]
 pub struct Versions {
@@ -36,7 +36,10 @@ impl std::fmt::Display for ProjectType {
     }
 }
 
-pub async fn interactive(working_directory: PathBuf, versions: Versions) -> anyhow::Result<()> {
+pub async fn interactive(
+    working_directory: PathBuf,
+    versions: Versions,
+) -> anyhow::Result<Option<JoinHandle<()>>> {
     let ans = Select::new(
         "Project Type",
         vec![
@@ -58,7 +61,7 @@ pub async fn for_project_type(
     working_directory: PathBuf,
     project_type: ProjectType,
     versions: Versions,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Option<JoinHandle<()>>> {
     let project = prompt::project::configure_project(working_directory).await?;
 
     let with_composedb = Confirm::new("Include ComposeDB?")
@@ -116,8 +119,13 @@ pub async fn for_project_type(
     f.write_all(serde_json::to_string(&cfg)?.as_bytes()).await?;
     f.flush().await?;
 
-    install::ceramic_daemon::install_ceramic_daemon(&project.path, &cfg, &versions.ceramic, false)
-        .await?;
+    let opt_child = install::ceramic_daemon::install_ceramic_daemon(
+        &project.path,
+        &cfg,
+        &versions.ceramic,
+        false,
+    )
+    .await?;
     if with_composedb {
         install::compose_db::install_compose_db(&cfg, &doc, &project.path, &versions.composedb)
             .await?;
@@ -134,7 +142,7 @@ pub async fn for_project_type(
         }
     }
 
-    Ok(())
+    Ok(opt_child)
 }
 
 pub async fn default_for_project_type(
@@ -142,7 +150,7 @@ pub async fn default_for_project_type(
     project_type: ProjectType,
     versions: Versions,
     with_composedb: bool,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Option<JoinHandle<()>>> {
     let project = Project {
         name: "ceramic-app".to_string(),
         path: working_directory,
@@ -191,12 +199,17 @@ pub async fn default_for_project_type(
     f.write_all(serde_json::to_string(&cfg)?.as_bytes()).await?;
     f.flush().await?;
 
-    install::ceramic_daemon::install_ceramic_daemon(&project.path, &cfg, &versions.ceramic, true)
-        .await?;
+    let opt_child = install::ceramic_daemon::install_ceramic_daemon(
+        &project.path,
+        &cfg,
+        &versions.ceramic,
+        true,
+    )
+    .await?;
     if with_composedb {
         install::compose_db::install_compose_db(&cfg, &doc, &project.path, &versions.composedb)
             .await?;
     }
 
-    Ok(())
+    Ok(opt_child)
 }

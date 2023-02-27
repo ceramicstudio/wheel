@@ -1,6 +1,7 @@
 use inquire::*;
 use std::path::Path;
 use std::process::Stdio;
+use tokio::task::JoinHandle;
 
 use crate::install::log_async_errors;
 use crate::install::verify_db;
@@ -13,7 +14,7 @@ pub async fn install_ceramic_daemon(
     cfg: &Config,
     version: &Option<semver::Version>,
     quiet: bool,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Option<JoinHandle<()>>> {
     verify_db::verify(&cfg).await?;
 
     if let Some(file_logger) = &cfg.logger.file {
@@ -63,7 +64,7 @@ pub async fn install_ceramic_daemon(
             .prompt()?
     };
 
-    if ans {
+    let ret = if ans {
         log::info!("Starting ceramic as a daemon");
         let mut cmd = Command::new("npx");
 
@@ -80,7 +81,11 @@ pub async fn install_ceramic_daemon(
             .stderr(Stdio::piped())
             .spawn()?;
 
-        tokio::spawn(async move {
+        log::info!(
+            "Ceramic is running in the background, press ctrl-c to interrupt ceramic when desired"
+        );
+
+        Some(tokio::spawn(async move {
             let err = process.stderr.take();
             if let Ok(exit) = process.wait().await {
                 log::info!(
@@ -93,10 +98,19 @@ pub async fn install_ceramic_daemon(
                     }
                 }
             }
-        });
+        }))
     } else {
-        log::info!("When you would like to run ceramic please run `npx ceramic daemon`");
-    }
+        log::info!(
+            r#"When you would like to run ceramic please run 
 
-    Ok(())
+cd {}
+npx ceramic daemon --config ${}
+            "#,
+            working_directory.display(),
+            cfg_file_path.display()
+        );
+        None
+    };
+
+    Ok(ret)
 }
