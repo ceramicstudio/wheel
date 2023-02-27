@@ -16,7 +16,10 @@ pub async fn configure_project(working_directory: PathBuf) -> anyhow::Result<Pro
         .prompt()?;
     let project_path = PathBuf::from(project_path);
     if !project_path.exists() {
-        log::info!("Project directory {} does not exist, creating it", project_path.display());
+        log::info!(
+            "Project directory {} does not exist, creating it",
+            project_path.display()
+        );
         tokio::fs::create_dir_all(&project_path).await?;
     }
     Ok(Project {

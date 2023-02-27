@@ -241,7 +241,7 @@ impl Default for Indexing {
         Self {
             db: "postgres://ceramic:password@localhost:5432/ceramic".to_string(),
             allow_queries_before_historical_sync: true,
-            enable_historical_sync: true,
+            enable_historical_sync: false,
         }
     }
 }

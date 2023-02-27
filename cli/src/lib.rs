@@ -51,7 +51,11 @@ pub async fn interactive(working_directory: PathBuf, versions: Versions) -> anyh
     for_project_type(working_directory, ans, versions).await
 }
 
-pub async fn for_project_type(working_directory: PathBuf, project_type: ProjectType, versions: Versions) -> anyhow::Result<()> {
+pub async fn for_project_type(
+    working_directory: PathBuf,
+    project_type: ProjectType,
+    versions: Versions,
+) -> anyhow::Result<()> {
     let project = prompt::project::configure_project(working_directory).await?;
 
     let with_composedb = Confirm::new("Include ComposeDB?")
@@ -81,9 +85,7 @@ pub async fn for_project_type(working_directory: PathBuf, project_type: ProjectT
             cfg.network = ceramic_config::Network::in_memory();
             prompt::prompt(&mut cfg, &doc, prompt::local_config).await?;
         }
-        ProjectType::Dev => {
-
-        }
+        ProjectType::Dev => {}
         ProjectType::Advanced => {
             prompt::prompt(&mut cfg, &doc, prompt::advanced_config).await?;
         }
@@ -107,28 +109,44 @@ pub async fn for_project_type(working_directory: PathBuf, project_type: ProjectT
     f.write_all(serde_json::to_string(&cfg)?.as_bytes()).await?;
     f.flush().await?;
 
-    install::ceramic_daemon::install_ceramic_daemon(&project.path, &cfg, &versions.ceramic, with_composedb)
-        .await?;
+    install::ceramic_daemon::install_ceramic_daemon(
+        &project.path,
+        &cfg,
+        &versions.ceramic,
+        with_composedb,
+    )
+    .await?;
     install::compose_db::install_compose_db(&cfg, &doc, &project.path, &versions.composedb).await?;
 
     if Confirm::new("Install ComposeDB App Template (Next.js)?")
         .with_default(false)
         .prompt()?
     {
-        install::ceramic_app_template::install_ceramic_app_template(&project.path, &versions.app_template).await?;
+        install::ceramic_app_template::install_ceramic_app_template(
+            &project.path,
+            &versions.app_template,
+        )
+        .await?;
     }
 
     Ok(())
 }
 
-pub async fn default_for_project_type(working_directory: PathBuf, project_type: ProjectType, versions: Versions) -> anyhow::Result<()> {
+pub async fn default_for_project_type(
+    working_directory: PathBuf,
+    project_type: ProjectType,
+    versions: Versions,
+) -> anyhow::Result<()> {
     let project = Project {
         name: "ceramic-app".to_string(),
         path: working_directory,
     };
 
     if !project.path.exists() {
-        log::info!("Project directory {} does not exist, creating it", project.path.display());
+        log::info!(
+            "Project directory {} does not exist, creating it",
+            project.path.display()
+        );
         tokio::fs::create_dir_all(&project.path).await?;
     }
 
@@ -157,6 +175,7 @@ pub async fn default_for_project_type(working_directory: PathBuf, project_type: 
         ProjectType::Production => {
             cfg.anchor = ceramic_config::Anchor::mainnet();
             cfg.network = ceramic_config::Network::mainnet();
+            cfg.indexing.enable_historical_sync = true;
         }
     }
 

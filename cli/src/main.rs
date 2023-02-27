@@ -7,7 +7,7 @@ enum Network {
     Local,
     Dev,
     Clay,
-    Mainnet
+    Mainnet,
 }
 
 #[derive(Parser, Debug)]
@@ -32,9 +32,12 @@ async fn main() -> anyhow::Result<()> {
         .try_init();
     let args = ProgramArgs::parse();
     let current_directory = std::env::current_dir()?;
-    let working_directory = args.working_directory.map(PathBuf::from).unwrap_or_else(|| current_directory);
+    let working_directory = args
+        .working_directory
+        .map(PathBuf::from)
+        .unwrap_or_else(|| current_directory);
     let mut versions = wheel_3box::Versions::default();
-    if let Some(v)= args.ceramic_version {
+    if let Some(v) = args.ceramic_version {
         versions.ceramic = Some(v.parse()?);
     }
     if let Some(v) = args.composedb_version {

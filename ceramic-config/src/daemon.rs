@@ -78,6 +78,8 @@ pub struct DaemonIndexingConfig {
     pub db: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub allow_queries_before_historical_sync: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub enable_historical_sync: Option<bool>,
 }
 
 #[derive(Serialize)]

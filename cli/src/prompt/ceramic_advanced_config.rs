@@ -118,10 +118,13 @@ fn configure_network(cfg: &mut Config) -> anyhow::Result<()> {
     .prompt()?;
     match cfg.network.id {
         NetworkIdentifier::Local | NetworkIdentifier::Dev => {
-            let topic = cfg.network.pubsub_topic.clone().unwrap_or_else(|| format!("/ceramic/local-{}", std::time::Instant::now().elapsed().as_millis()));
-            let topic = Text::new("Pubsub Topic")
-                .with_default(&topic)
-                .prompt()?;
+            let topic = cfg.network.pubsub_topic.clone().unwrap_or_else(|| {
+                format!(
+                    "/ceramic/local-{}",
+                    std::time::Instant::now().elapsed().as_millis()
+                )
+            });
+            let topic = Text::new("Pubsub Topic").with_default(&topic).prompt()?;
             cfg.network.pubsub_topic = Some(topic);
         }
         _ => {
