@@ -41,7 +41,7 @@ pub async fn install_compose_db(
     log::info!(
         r#"ComposeDB cli now available. To properly use composedb, you will need to update your environment
 
-    cd ${}
+    cd {}
     source composedb.env
 
 You can then run composedb with

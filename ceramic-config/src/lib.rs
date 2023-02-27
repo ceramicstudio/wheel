@@ -268,7 +268,7 @@ pub struct Node {
 impl Default for Node {
     fn default() -> Self {
         Self {
-            gateway: true,
+            gateway: false,
             sync_override: false,
             stream_cache_limit: 100,
         }
@@ -361,6 +361,40 @@ pub struct Config {
     pub logger: Logger,
     #[wasm_bindgen(getter_with_clone)]
     pub metrics: Metrics,
+}
+
+impl Config {
+    pub fn in_memory(&mut self) -> &mut Self {
+        self.anchor = Anchor::in_memory();
+        self.network = Network::in_memory();
+        self
+    }
+
+    pub fn local(&mut self, name: &str) -> &mut Self {
+        self.anchor = Anchor::local();
+        self.network = Network::local(name);
+        self
+    }
+
+    pub fn dev(&mut self) -> &mut Self {
+        self.anchor = Anchor::dev();
+        self.network = Network::dev();
+        self
+    }
+
+    pub fn test(&mut self) -> &mut Self {
+        self.anchor = Anchor::clay();
+        self.network = Network::clay();
+        self
+    }
+
+    pub fn production(&mut self) -> &mut Self {
+        self.anchor = Anchor::mainnet();
+        self.network = Network::mainnet();
+        self.indexing.enable_historical_sync = true;
+        self.node.gateway = true;
+        self
+    }
 }
 
 #[wasm_bindgen]

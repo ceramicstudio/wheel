@@ -15,6 +15,7 @@ pub struct Versions {
 }
 
 pub enum ProjectType {
+    InMemory,
     Local,
     Dev,
     Test,
@@ -25,6 +26,7 @@ pub enum ProjectType {
 impl std::fmt::Display for ProjectType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::InMemory => write!(f, "InMemory"),
             Self::Local => write!(f, "Local"),
             Self::Dev => write!(f, "Dev"),
             Self::Test => write!(f, "Test (Clay)"),
@@ -38,6 +40,7 @@ pub async fn interactive(working_directory: PathBuf, versions: Versions) -> anyh
     let ans = Select::new(
         "Project Type",
         vec![
+            ProjectType::InMemory,
             ProjectType::Local,
             ProjectType::Dev,
             ProjectType::Test,
@@ -80,23 +83,27 @@ pub async fn for_project_type(
     cfg.http_api.admin_dids.push(doc.id.clone());
 
     match project_type {
-        ProjectType::Local => {
-            cfg.anchor = ceramic_config::Anchor::in_memory();
-            cfg.network = ceramic_config::Network::in_memory();
+        ProjectType::InMemory => {
+            cfg.in_memory();
             prompt::prompt(&mut cfg, &doc, prompt::local_config).await?;
         }
-        ProjectType::Dev => {}
+        ProjectType::Local => {
+            cfg.local(&project.name);
+            prompt::prompt(&mut cfg, &doc, prompt::local_config).await?;
+        }
+        ProjectType::Dev => {
+            prompt::prompt(&mut cfg, &doc, prompt::local_config).await?;
+            cfg.dev();
+        }
         ProjectType::Advanced => {
             prompt::prompt(&mut cfg, &doc, prompt::advanced_config).await?;
         }
         ProjectType::Test => {
-            cfg.anchor = ceramic_config::Anchor::clay();
-            cfg.network = ceramic_config::Network::clay();
+            cfg.test();
             prompt::prompt(&mut cfg, &doc, prompt::remote_config).await?;
         }
         ProjectType::Production => {
-            cfg.anchor = ceramic_config::Anchor::mainnet();
-            cfg.network = ceramic_config::Network::mainnet();
+            cfg.production();
             prompt::prompt(&mut cfg, &doc, prompt::remote_config).await?;
         }
     }
@@ -153,30 +160,28 @@ pub async fn default_for_project_type(
 
     let cfg_file_path = project.path.join("ceramic.json");
     let mut cfg = ceramic_config::Config::default();
-    cfg.http_api.admin_dids.push(doc.id.clone());
 
     match project_type {
+        ProjectType::InMemory => {
+            cfg.in_memory();
+        }
         ProjectType::Local => {
-            cfg.anchor = ceramic_config::Anchor::local();
-            cfg.network = ceramic_config::Network::local(&project.name);
+            cfg.local(&project.name);
         }
         ProjectType::Dev => {
-            cfg.anchor = ceramic_config::Anchor::dev();
-            cfg.network = ceramic_config::Network::dev();
+            cfg.dev();
         }
         ProjectType::Advanced => {
             anyhow::bail!("Advanced config not supported for a default project");
         }
         ProjectType::Test => {
-            cfg.anchor = ceramic_config::Anchor::clay();
-            cfg.network = ceramic_config::Network::clay();
+            cfg.test();
         }
         ProjectType::Production => {
-            cfg.anchor = ceramic_config::Anchor::mainnet();
-            cfg.network = ceramic_config::Network::mainnet();
-            cfg.indexing.enable_historical_sync = true;
+            cfg.production();
         }
     }
+    cfg.http_api.admin_dids.push(doc.id.clone());
 
     let mut f = tokio::fs::OpenOptions::new()
         .write(true)
