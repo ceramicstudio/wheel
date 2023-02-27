@@ -87,7 +87,8 @@ impl Into<crate::daemon::DaemonConfig> for crate::Config {
         });
         let indexing = Some(crate::daemon::DaemonIndexingConfig {
             db: Some(self.indexing.db),
-            allow_queries_before_historical_sync: None,
+            allow_queries_before_historical_sync: Some(self.indexing.allow_queries_before_historical_sync),
+            enable_historical_sync: Some(self.indexing.enable_historical_sync),
         });
         crate::daemon::DaemonConfig {
             anchor: anchor,

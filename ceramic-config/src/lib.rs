@@ -230,12 +230,18 @@ impl Anchor {
 pub struct Indexing {
     #[wasm_bindgen(getter_with_clone)]
     pub db: String,
+    #[wasm_bindgen(getter_with_clone)]
+    pub allow_queries_before_historical_sync: bool,
+    #[wasm_bindgen(getter_with_clone)]
+    pub enable_historical_sync: bool,
 }
 
 impl Default for Indexing {
     fn default() -> Self {
         Self {
             db: "postgres://ceramic:password@localhost:5432/ceramic".to_string(),
+            allow_queries_before_historical_sync: true,
+            enable_historical_sync: true,
         }
     }
 }
