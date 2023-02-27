@@ -1,11 +1,12 @@
-use ssi::did::Document;
 use std::path::Path;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 
+use crate::did::DidAndPrivateKey;
+
 pub async fn install_compose_db(
     cfg: &ceramic_config::Config,
-    admin_did: &Document,
+    admin_did: &DidAndPrivateKey,
     working_directory: &Path,
     version: &Option<semver::Version>,
 ) -> anyhow::Result<()> {
@@ -32,7 +33,7 @@ pub async fn install_compose_db(
         .open(working_directory.join("composedb.env"))
         .await?;
 
-    f.write_all(format!("export DID_PRIVATE_KEY={}", admin_did.id.to_string()).as_bytes())
+    f.write_all(format!("export DID_PRIVATE_KEY={}", admin_did.pk()).as_bytes())
         .await?;
     f.write_all(format!("\nexport CERAMIC_URL={}", hostname).as_bytes())
         .await?;

@@ -83,7 +83,7 @@ pub async fn for_project_type(
         ceramic_config::Config::default()
     };
 
-    cfg.http_api.admin_dids.push(doc.id.clone());
+    cfg.http_api.admin_dids.push(doc.did().to_string());
 
     match project_type {
         ProjectType::InMemory => {
@@ -164,7 +164,7 @@ pub async fn default_for_project_type(
         tokio::fs::create_dir_all(&project.path).await?;
     }
 
-    let doc = crate::did::generate_document().await?;
+    let doc = crate::did::DidAndPrivateKey::generate()?;
 
     let cfg_file_path = project.path.join("ceramic.json");
     let mut cfg = ceramic_config::Config::default();
@@ -189,7 +189,7 @@ pub async fn default_for_project_type(
             cfg.production();
         }
     }
-    cfg.http_api.admin_dids.push(doc.id.clone());
+    cfg.http_api.admin_dids.push(doc.did().to_string());
 
     let mut f = tokio::fs::OpenOptions::new()
         .write(true)

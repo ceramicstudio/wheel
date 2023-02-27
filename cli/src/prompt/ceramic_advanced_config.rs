@@ -1,16 +1,17 @@
 use ceramic_config::*;
 use inquire::*;
-use ssi::did::Document;
 use std::path::PathBuf;
+
+use crate::did::DidAndPrivateKey;
 
 pub async fn prompt<'a, 'b, Fn, Fut>(
     cfg: &'a mut Config,
-    admin_did: &'b Document,
+    admin_did: &'b DidAndPrivateKey,
     mut func: Fn,
 ) -> anyhow::Result<()>
 where
     Fut: std::future::Future<Output = anyhow::Result<()>>,
-    Fn: FnMut(&'a mut Config, &'b Document) -> Fut,
+    Fn: FnMut(&'a mut Config, &'b DidAndPrivateKey) -> Fut,
 {
     let ans = Confirm::new(&format!("Step through ceramic configuration?"))
         .with_help_message("Step through interactive prompts to configure ceramic node")
@@ -86,7 +87,7 @@ pub async fn configure_state_store(cfg: &mut Config) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn configure_http_api(cfg: &mut Config, admin_did: &Document) -> anyhow::Result<()> {
+pub fn configure_http_api(cfg: &mut Config, admin_did: &DidAndPrivateKey) -> anyhow::Result<()> {
     cfg.http_api.hostname = Text::new("Bind address")
         .with_default(&cfg.http_api.hostname)
         .prompt()?;
@@ -99,7 +100,7 @@ pub fn configure_http_api(cfg: &mut Config, admin_did: &Document) -> anyhow::Res
         .prompt()?;
     let cors = cors.split(",").map(|s| s.trim().to_string()).collect();
     cfg.http_api.cors_allowed_origins = cors;
-    cfg.http_api.admin_dids = vec![admin_did.id.clone()];
+    cfg.http_api.admin_dids = vec![admin_did.did().to_string()];
     Ok(())
 }
 
@@ -166,7 +167,10 @@ pub fn configure_indexing(cfg: &mut Config) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub async fn configure<'a, 'b>(cfg: &'a mut Config, admin_did: &'b Document) -> anyhow::Result<()> {
+pub async fn configure<'a, 'b>(
+    cfg: &'a mut Config,
+    admin_did: &'b DidAndPrivateKey,
+) -> anyhow::Result<()> {
     configure_ipfs(cfg)?;
     configure_state_store(cfg).await?;
     configure_http_api(cfg, admin_did)?;

@@ -20,7 +20,7 @@ For production ceramic nodes, postgres is required. Visit https://www.postgresql
 
 You will then need to configure postgres for ceramic.
 
-    $ psql postgresql
+    $ psql postgres
 
     CREATE DATABASE ceramic;
 
