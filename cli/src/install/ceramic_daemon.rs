@@ -1,5 +1,5 @@
 use inquire::*;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use tokio::task::JoinHandle;
 
@@ -8,6 +8,8 @@ use crate::install::verify_db;
 use ceramic_config::Config;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
+
+const DAEMON_CONFIG: &'static str = "daemon_config.json";
 
 pub async fn install_ceramic_daemon(
     working_directory: &Path,
@@ -43,7 +45,7 @@ pub async fn install_ceramic_daemon(
         anyhow::bail!("Failed to install ceramic cli");
     }
 
-    let cfg_file_path = working_directory.join("daemon_config.json");
+    let cfg_file_path = working_directory.join(DAEMON_CONFIG);
     let daemon_config: ceramic_config::DaemonConfig = cfg.clone().into();
     let mut f = tokio::fs::OpenOptions::new()
         .write(true)
@@ -64,26 +66,28 @@ pub async fn install_ceramic_daemon(
             .prompt()?
     };
 
+    let ceramic_path = PathBuf::from("node_modules").join(".bin").join("ceramic");
+
     let ret = if ans {
-        log::info!("Starting ceramic as a daemon");
-        let mut cmd = Command::new("npx");
+        log::info!(
+            "Starting ceramic as a daemon, using config file {} and binary {}",
+            cfg_file_path.display(),
+            working_directory.join(&ceramic_path).display()
+        );
+        let mut cmd = Command::new("node");
 
         let mut process = cmd
             .args(&[
-                "ceramic",
+                ceramic_path.to_string_lossy().as_ref(),
                 "daemon",
                 "--config",
-                cfg_file_path.to_string_lossy().as_ref(),
+                DAEMON_CONFIG,
             ])
             .current_dir(working_directory)
             .kill_on_drop(false)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()?;
-
-        log::info!(
-            "Ceramic is running in the background, press ctrl-c to interrupt ceramic when desired"
-        );
 
         Some(tokio::spawn(async move {
             let err = process.stderr.take();
@@ -103,10 +107,9 @@ pub async fn install_ceramic_daemon(
         log::info!(
             r#"When you would like to run ceramic please run 
 
-cd {}
-npx ceramic daemon --config ${}
+{} daemon --config {}
             "#,
-            working_directory.display(),
+            ceramic_path.display(),
             cfg_file_path.display()
         );
         None

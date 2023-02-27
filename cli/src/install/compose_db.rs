@@ -37,19 +37,23 @@ pub async fn install_compose_db(
     f.write_all(format!("export CERAMIC_URL={}", hostname).as_bytes())
         .await?;
     f.flush().await?;
+    let composedb_path = working_directory
+        .join("node_modules")
+        .join(".bin")
+        .join("composedb");
 
     log::info!(
         r#"ComposeDB cli now available. To properly use composedb, you will need to update your environment
 
-    cd {}
-    source composedb.env
+    source {}/composedb.env
 
 You can then run composedb with
 
-    npx composedb
+    node {}
     
 For more information on composedb and commands to run, see https://composedb.js.org/docs/0.4.x/first-composite"#,
-        working_directory.to_string_lossy()
+        working_directory.display(),
+        composedb_path.display(),
     );
 
     Ok(())
