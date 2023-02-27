@@ -11,7 +11,7 @@ Please follow the instructions that follow.
 
 If you don't want to step through prompts at all, you can use wheel in "default" mode
 
-    wheel --working-directory <path to setup your work in> --network <one of local|dev|clay|mainnet> --no-interactive
+    wheel --working-directory <path to setup your work in> --network <one of inmemory|local|dev|clay|mainnet> --no-interactive
 
 Please run `wheel --help` for more options.
 
