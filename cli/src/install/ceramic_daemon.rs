@@ -12,7 +12,7 @@ pub async fn install_ceramic_daemon(
     working_directory: &Path,
     cfg: &Config,
     version: &Option<semver::Version>,
-    with_ceramic: bool,
+    quiet: bool,
 ) -> anyhow::Result<()> {
     verify_db::verify(&cfg).await?;
 
@@ -47,6 +47,7 @@ pub async fn install_ceramic_daemon(
     let mut f = tokio::fs::OpenOptions::new()
         .write(true)
         .create(true)
+        .truncate(true)
         .append(false)
         .open(&cfg_file_path)
         .await?;
@@ -54,16 +55,17 @@ pub async fn install_ceramic_daemon(
         .await?;
     f.flush().await?;
 
-    let ans = Confirm::new(&format!("Would you like ceramic started as a daemon?"))
-        .with_default(true)
-        .prompt()?;
+    let ans = if quiet {
+        true
+    } else {
+        Confirm::new(&format!("Would you like ceramic started as a daemon?"))
+            .with_default(true)
+            .prompt()?
+    };
 
     if ans {
         log::info!("Starting ceramic as a daemon");
         let mut cmd = Command::new("npx");
-        if with_ceramic {
-            cmd.env("CERAMIC_ENABLE_EXPERIMENTAL_COMPOSE_DB", "true");
-        }
 
         let mut process = cmd
             .args(&[
@@ -93,7 +95,7 @@ pub async fn install_ceramic_daemon(
             }
         });
     } else {
-        log::info!("When you would like to run ceramic please run `CERAMIC_ENABLE_EXPERIMENTAL_COMPOSE_DB=true npx ceramic daemon`");
+        log::info!("When you would like to run ceramic please run `npx ceramic daemon`");
     }
 
     Ok(())

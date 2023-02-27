@@ -23,6 +23,8 @@ struct ProgramArgs {
     composedb_version: Option<String>,
     #[arg(long, short = 'y', default_value_t = false)]
     no_interactive: bool,
+    #[arg(long, default_value_t = true)]
+    with_compose_db: bool,
 }
 
 #[tokio::main]
@@ -52,7 +54,13 @@ async fn main() -> anyhow::Result<()> {
             Network::Mainnet => wheel_3box::ProjectType::Production,
         };
         if args.no_interactive {
-            wheel_3box::default_for_project_type(working_directory, project_type, versions).await?;
+            wheel_3box::default_for_project_type(
+                working_directory,
+                project_type,
+                versions,
+                args.with_compose_db,
+            )
+            .await?;
         } else {
             wheel_3box::for_project_type(working_directory, project_type, versions).await?;
         }

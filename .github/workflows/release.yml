@@ -53,7 +53,7 @@ jobs:
           cat ~/.npmrc
           echo "//registry.npmjs.org/:_authToken="${{ secrets.NPM_TOKEN }} >> .npmrc
           cat .npmrc
-          npm config set "//registry.npmjs.org/:$_authToken" ${{ secrets.NPM_TOKEN }}
+          npm config set "//registry.npmjs.org/:$_authToken"=${{ secrets.NPM_TOKEN }}
           wasm-pack publish
 
   # Build and packages all the things

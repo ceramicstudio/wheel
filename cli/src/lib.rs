@@ -109,24 +109,22 @@ pub async fn for_project_type(
     f.write_all(serde_json::to_string(&cfg)?.as_bytes()).await?;
     f.flush().await?;
 
-    install::ceramic_daemon::install_ceramic_daemon(
-        &project.path,
-        &cfg,
-        &versions.ceramic,
-        with_composedb,
-    )
-    .await?;
-    install::compose_db::install_compose_db(&cfg, &doc, &project.path, &versions.composedb).await?;
-
-    if Confirm::new("Install ComposeDB App Template (Next.js)?")
-        .with_default(false)
-        .prompt()?
-    {
-        install::ceramic_app_template::install_ceramic_app_template(
-            &project.path,
-            &versions.app_template,
-        )
+    install::ceramic_daemon::install_ceramic_daemon(&project.path, &cfg, &versions.ceramic, false)
         .await?;
+    if with_composedb {
+        install::compose_db::install_compose_db(&cfg, &doc, &project.path, &versions.composedb)
+            .await?;
+
+        if Confirm::new("Install ComposeDB App Template (Next.js)?")
+            .with_default(false)
+            .prompt()?
+        {
+            install::ceramic_app_template::install_ceramic_app_template(
+                &project.path,
+                &versions.app_template,
+            )
+            .await?;
+        }
     }
 
     Ok(())
@@ -136,6 +134,7 @@ pub async fn default_for_project_type(
     working_directory: PathBuf,
     project_type: ProjectType,
     versions: Versions,
+    with_composedb: bool,
 ) -> anyhow::Result<()> {
     let project = Project {
         name: "ceramic-app".to_string(),
@@ -189,7 +188,10 @@ pub async fn default_for_project_type(
 
     install::ceramic_daemon::install_ceramic_daemon(&project.path, &cfg, &versions.ceramic, true)
         .await?;
-    install::compose_db::install_compose_db(&cfg, &doc, &project.path, &versions.composedb).await?;
+    if with_composedb {
+        install::compose_db::install_compose_db(&cfg, &doc, &project.path, &versions.composedb)
+            .await?;
+    }
 
     Ok(())
 }
