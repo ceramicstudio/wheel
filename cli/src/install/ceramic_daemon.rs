@@ -108,10 +108,12 @@ pub async fn install_ceramic_daemon(
     };
 
     log::info!(
-        r#"When you would like to run ceramic please run 
+        r#"
+        
+When you would like to run ceramic please run 
 
-cd {}
-node {} daemon --config {}
+    cd {}
+    node {} daemon --config {}
         "#,
         working_directory.display(),
         ceramic_path.display(),

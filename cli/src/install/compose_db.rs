@@ -43,16 +43,24 @@ pub async fn install_compose_db(
         .join("composedb");
 
     log::info!(
-        r#"ComposeDB cli now available. To properly use composedb, you will need to update your environment
+        r#"ComposeDB cli now available. 
+        
+To properly use composedb, you will need to update your environment
 
     source {}/composedb.env
 
 You can then run composedb with
 
     node {}
+
+To run the graphiql server use
+
+    node {} graphql:server --graphiql --port 5005 <path to compiled composite>
     
-For more information on composedb and commands to run, see https://composedb.js.org/docs/0.4.x/first-composite"#,
+For more information on composedb and commands to run, see https://composedb.js.org/docs/0.4.x/first-composite
+        "#,
         working_directory.display(),
+        composedb_path.display(),
         composedb_path.display(),
     );
 
