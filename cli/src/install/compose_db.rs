@@ -34,7 +34,7 @@ pub async fn install_compose_db(
 
     f.write_all(format!("export DID_PRIVATE_KEY={}", admin_did.id.to_string()).as_bytes())
         .await?;
-    f.write_all(format!("export CERAMIC_URL={}", hostname).as_bytes())
+    f.write_all(format!("\nexport CERAMIC_URL={}", hostname).as_bytes())
         .await?;
     f.flush().await?;
     let composedb_path = working_directory

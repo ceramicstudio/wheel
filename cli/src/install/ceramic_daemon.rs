@@ -104,16 +104,19 @@ pub async fn install_ceramic_daemon(
             }
         }))
     } else {
-        log::info!(
-            r#"When you would like to run ceramic please run 
-
-{} daemon --config {}
-            "#,
-            ceramic_path.display(),
-            cfg_file_path.display()
-        );
         None
     };
+
+    log::info!(
+        r#"When you would like to run ceramic please run 
+
+cd {}
+node {} daemon --config {}
+        "#,
+        working_directory.display(),
+        ceramic_path.display(),
+        DAEMON_CONFIG
+    );
 
     Ok(ret)
 }
