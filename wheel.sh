@@ -43,9 +43,4 @@ curl -LJ0 --output $OUTPUT_FILE $DOWNLOAD_URL
 tar -xvf $OUTPUT_FILE
 rm $OUTPUT_FILE
 
-if [[ $OSTYPE == 'darwin'* ]]
-then
-  echo "Wheel is now ready to go, run ./wheel to setup ceramic and ComposeDB"
-else
-  ./wheel "$@"
-fi
+echo "Wheel is now ready to go, run ./wheel to setup ceramic and ComposeDB"
