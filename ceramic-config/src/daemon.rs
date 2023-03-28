@@ -68,6 +68,8 @@ pub struct DaemonAnchorConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub anchor_service_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auth_method: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ethereum_rpc_url: Option<String>,
 }
 
@@ -98,6 +100,8 @@ pub struct DaemonNodeConfig {
     pub sync_override: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stream_cache_limit: Option<usize>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub private_seed_url: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -114,8 +118,7 @@ pub struct DaemonLoggerConfig {
 #[derive(Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct DaemonMetricsConfig {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub metrics_exporter_enabled: Option<bool>,
+    pub metrics_exporter_enabled: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub collector_host: Option<String>,
 }
