@@ -135,13 +135,26 @@ fn configure_network(cfg: &mut Config) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn configure_anchor(cfg: &mut Config) -> anyhow::Result<()> {
-    cfg.anchor.anchor_service_url = Text::new("Anchor Service Url")
-        .with_default(&cfg.anchor.anchor_service_url)
-        .prompt()?;
-    cfg.anchor.ethereum_rpc_url = Text::new("Ethereum RPC Url")
-        .with_default(&cfg.anchor.ethereum_rpc_url)
-        .prompt()?;
+pub fn configure_anchor(cfg: &mut Config) -> anyhow::Result<()> {
+    let url = if Confirm::new("Override Network CAS Url?").prompt()? {
+        Some(Text::new("Anchor Service Url").prompt()?)
+    } else {
+        Anchor::url_for_network(&cfg.network.id)
+    };
+    cfg.anchor = if let Some(url) = url {
+        if let Some(private_seed_url) =
+            Text::new("Private key (skip for IP Authentication)?").prompt_skippable()?
+        {
+            Anchor::RemoteDid {
+                url,
+                private_seed_url,
+            }
+        } else {
+            Anchor::RemoteIp(url)
+        }
+    } else {
+        Anchor::None
+    };
     Ok(())
 }
 

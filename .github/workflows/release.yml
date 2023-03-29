@@ -31,31 +31,6 @@ on:
         - major
 
 jobs:
-  # Publish ceramic-config to npm for use with js-ceramic
-  publish-ceramic-config-wasm:
-    runs-on: ubuntu-latest
-    env:
-      NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-    steps:
-      - uses: actions/checkout@v3
-      - id: install-wasm-pack
-        uses: taiki-e/install-action@v1
-        with:
-          tool: wasm-pack
-      - id: build-wasm-pack
-        working-directory: ceramic-config
-        run: wasm-pack build
-      - id: publish-wasm-pack
-        working-directory: ceramic-config
-        run: |
-          echo "//registry.npmjs.org/:_authToken="${{ secrets.NPM_TOKEN }} >> ~/.npmrc
-          cat ~/.npmrc
-          echo "//registry.npmjs.org/:_authToken="${{ secrets.NPM_TOKEN }} >> .npmrc
-          cat .npmrc
-          npm config set "//registry.npmjs.org/:_authToken"=${{ secrets.NPM_TOKEN }}
-          wasm-pack publish
-
   # Build and packages all the things
   build-binaries:
     strategy:
@@ -99,7 +74,7 @@ jobs:
             wheel_${{ matrix.target }}.tar.gz
 
   bump-versions:
-    needs: [publish-ceramic-config-wasm, build-binaries]
+    needs: [build-binaries]
     runs-on: ubuntu-latest
     env:
       CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}

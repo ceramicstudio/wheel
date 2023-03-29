@@ -8,6 +8,6 @@ pub async fn configure<'a, 'b>(
 ) -> anyhow::Result<()> {
     super::ceramic_advanced_config::configure_http_api(cfg, admin_did)?;
     super::ceramic_advanced_config::configure_indexing(cfg)?;
-
+    super::ceramic_advanced_config::configure_anchor(cfg)?;
     Ok(())
 }

@@ -1,4 +1,4 @@
-use crate::{LogLevel, NetworkIdentifier};
+use crate::{Anchor, LogLevel, Metrics, NetworkIdentifier};
 
 fn convert_log_level(level: LogLevel) -> u16 {
     match level {
@@ -22,10 +22,35 @@ fn convert_network_identifier(id: NetworkIdentifier) -> String {
 
 impl Into<crate::daemon::DaemonConfig> for crate::Config {
     fn into(self) -> crate::daemon::DaemonConfig {
-        let anchor = Some(crate::daemon::DaemonAnchorConfig {
-            anchor_service_url: Some(self.anchor.anchor_service_url),
-            ethereum_rpc_url: None,
-        });
+        let mut node = crate::daemon::DaemonNodeConfig {
+            sync_override: None,
+            gateway: Some(self.node.gateway),
+            stream_cache_limit: None,
+            private_seed_url: None,
+        };
+        let anchor = match self.anchor {
+            Anchor::None => None,
+            Anchor::RemoteIp(url) => {
+                log::info!("Anchor using {} with IP Authentication", url);
+                Some(crate::daemon::DaemonAnchorConfig {
+                    anchor_service_url: Some(url),
+                    auth_method: Some("did".to_string()),
+                    ethereum_rpc_url: None,
+                })
+            }
+            Anchor::RemoteDid {
+                url,
+                private_seed_url,
+            } => {
+                log::info!("Anchor using {} with DID Authentication. Please see https://composedb.js.org/docs/0.4.x/guides/composedb-server/access-mainnet#updating-to-did-based-authentication for more information", url);
+                node.private_seed_url = Some(private_seed_url);
+                Some(crate::daemon::DaemonAnchorConfig {
+                    anchor_service_url: Some(url),
+                    auth_method: Some("did".to_string()),
+                    ethereum_rpc_url: None,
+                })
+            }
+        };
         let http = Some(crate::daemon::DaemonHttpApiConfig {
             hostname: Some(self.http_api.hostname),
             port: Some(self.http_api.port),
@@ -58,18 +83,20 @@ impl Into<crate::daemon::DaemonConfig> for crate::Config {
                 log_level: Some(convert_log_level(self.logger.level)),
             }
         });
-        let metrics = Some(crate::daemon::DaemonMetricsConfig {
-            metrics_exporter_enabled: Some(self.metrics.enabled),
-            collector_host: Some(self.metrics.host),
-        });
+        let metrics = if let Metrics::Enabled(url) = self.metrics {
+            crate::daemon::DaemonMetricsConfig {
+                metrics_exporter_enabled: true,
+                collector_host: Some(url),
+            }
+        } else {
+            crate::daemon::DaemonMetricsConfig {
+                metrics_exporter_enabled: false,
+                collector_host: None,
+            }
+        };
         let network = Some(crate::daemon::DaemonNetworkConfig {
             name: Some(convert_network_identifier(self.network.id)),
             pubsub_topic: self.network.pubsub_topic,
-        });
-        let node = Some(crate::daemon::DaemonNodeConfig {
-            sync_override: None,
-            gateway: Some(self.node.gateway),
-            stream_cache_limit: None,
         });
         let state_store = Some(match self.state_store {
             crate::StateStore::S3(s3) => crate::daemon::DaemonStateStoreConfig {
@@ -97,9 +124,9 @@ impl Into<crate::daemon::DaemonConfig> for crate::Config {
             http_api: http,
             ipfs: ipfs,
             logger: logger,
-            metrics: metrics,
+            metrics: Some(metrics),
             network: network,
-            node: node,
+            node: Some(node),
             state_store: state_store,
             indexing: indexing,
             did_resolvers: None,

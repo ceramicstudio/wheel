@@ -6,18 +6,9 @@ pub use daemon::DaemonConfig;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use wasm_bindgen::prelude::*;
 
-// When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
-// allocator.
-#[cfg(feature = "wee_alloc")]
-#[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
-#[wasm_bindgen]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct IpfsRemote {
-    #[wasm_bindgen(getter_with_clone)]
     pub host: String,
 }
 
@@ -50,12 +41,9 @@ impl Default for Ipfs {
     }
 }
 
-#[wasm_bindgen]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct S3StateStore {
-    #[wasm_bindgen(getter_with_clone)]
     pub bucket: String,
-    #[wasm_bindgen(getter_with_clone)]
     pub endpoint: String,
 }
 
@@ -71,15 +59,11 @@ impl Default for StateStore {
     }
 }
 
-#[wasm_bindgen]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct HttpApi {
-    #[wasm_bindgen(getter_with_clone)]
     pub hostname: String,
     pub port: u16,
-    #[wasm_bindgen(skip)]
     pub cors_allowed_origins: Vec<String>,
-    #[wasm_bindgen(skip)]
     pub admin_dids: Vec<String>,
 }
 
@@ -94,7 +78,6 @@ impl Default for HttpApi {
     }
 }
 
-#[wasm_bindgen]
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum NetworkIdentifier {
     InMemory,
@@ -122,12 +105,9 @@ impl Default for NetworkIdentifier {
     }
 }
 
-#[wasm_bindgen]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Network {
-    #[wasm_bindgen(getter_with_clone)]
     pub id: NetworkIdentifier,
-    #[wasm_bindgen(getter_with_clone)]
     pub pubsub_topic: Option<String>,
 }
 
@@ -173,66 +153,37 @@ impl Network {
     }
 }
 
-#[wasm_bindgen]
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Anchor {
-    #[wasm_bindgen(getter_with_clone)]
-    pub anchor_service_url: String,
-    #[wasm_bindgen(getter_with_clone)]
-    pub ethereum_rpc_url: String,
+pub enum Anchor {
+    None,
+    RemoteIp(String),
+    RemoteDid {
+        url: String,
+        private_seed_url: String,
+    },
 }
 
 impl Default for Anchor {
     fn default() -> Self {
-        Self::dev()
+        Self::None
     }
 }
 
 impl Anchor {
-    pub fn in_memory() -> Self {
-        Self {
-            anchor_service_url: "https://localhost:8081/".to_string(),
-            ethereum_rpc_url: "http://localhost:7545".to_string(),
-        }
-    }
-
-    pub fn local() -> Self {
-        Self {
-            anchor_service_url: "https://cas-qa.3boxlabs.com/".to_string(),
-            ethereum_rpc_url: "http://localhost:7545".to_string(),
-        }
-    }
-
-    pub fn dev() -> Self {
-        Self {
-            anchor_service_url: "https://cas-qa.3boxlabs.com/".to_string(),
-            ethereum_rpc_url: "http://localhost:7545".to_string(),
-        }
-    }
-
-    pub fn clay() -> Self {
-        Self {
-            anchor_service_url: "https://cas-clay.3boxlabs.com/".to_string(),
-            ethereum_rpc_url: "http://localhost:7545".to_string(),
-        }
-    }
-
-    pub fn mainnet() -> Self {
-        Self {
-            anchor_service_url: "https://cas.3boxlabs.com/".to_string(),
-            ethereum_rpc_url: "http://localhost:7545".to_string(),
+    pub fn url_for_network(id: &NetworkIdentifier) -> Option<String> {
+        match id {
+            NetworkIdentifier::InMemory | NetworkIdentifier::Local => None,
+            NetworkIdentifier::Dev => Some("https://cas-qa.3boxlabs.com/".to_string()),
+            NetworkIdentifier::Clay => Some("https://cas-clay.3boxlabs.com/".to_string()),
+            NetworkIdentifier::Mainnet => Some("https://cas.3boxlabs.com/".to_string()),
         }
     }
 }
 
-#[wasm_bindgen]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Indexing {
-    #[wasm_bindgen(getter_with_clone)]
     pub db: String,
-    #[wasm_bindgen(getter_with_clone)]
     pub allow_queries_before_historical_sync: bool,
-    #[wasm_bindgen(getter_with_clone)]
     pub enable_historical_sync: bool,
 }
 
@@ -257,7 +208,6 @@ impl Default for DidResolvers {
     }
 }
 
-#[wasm_bindgen]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Node {
     pub gateway: bool,
@@ -290,7 +240,6 @@ impl Default for FileLogger {
     }
 }
 
-#[wasm_bindgen]
 #[derive(Copy, Clone, Debug, Deserialize, Serialize)]
 pub enum LogLevel {
     Trace,
@@ -321,75 +270,56 @@ impl Default for Logger {
     }
 }
 
-#[wasm_bindgen]
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Metrics {
-    pub enabled: bool,
-    #[wasm_bindgen(getter_with_clone)]
-    pub host: String,
+pub enum Metrics {
+    Disabled,
+    Enabled(String),
 }
 
 impl Default for Metrics {
     fn default() -> Self {
-        Self {
-            enabled: false,
-            host: "???".to_string(),
-        }
+        Self::Disabled
     }
 }
 
-#[wasm_bindgen]
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Config {
-    #[wasm_bindgen(skip)]
     pub ipfs: Ipfs,
-    #[wasm_bindgen(skip)]
     pub state_store: StateStore,
-    #[wasm_bindgen(getter_with_clone)]
     pub http_api: HttpApi,
-    #[wasm_bindgen(getter_with_clone)]
     pub network: Network,
-    #[wasm_bindgen(getter_with_clone)]
     pub anchor: Anchor,
-    #[wasm_bindgen(getter_with_clone)]
     pub indexing: Indexing,
-    #[wasm_bindgen(skip)]
     pub did_resolvers: DidResolvers,
-    #[wasm_bindgen(getter_with_clone)]
     pub node: Node,
-    #[wasm_bindgen(skip)]
     pub logger: Logger,
-    #[wasm_bindgen(getter_with_clone)]
     pub metrics: Metrics,
 }
 
 impl Config {
     pub fn in_memory(&mut self) -> &mut Self {
-        self.anchor = Anchor::in_memory();
+        self.anchor = Anchor::None;
         self.network = Network::in_memory();
         self
     }
 
     pub fn local(&mut self, name: &str) -> &mut Self {
-        self.anchor = Anchor::local();
+        self.anchor = Anchor::None;
         self.network = Network::local(name);
         self
     }
 
     pub fn dev(&mut self) -> &mut Self {
-        self.anchor = Anchor::dev();
         self.network = Network::dev();
         self
     }
 
     pub fn test(&mut self) -> &mut Self {
-        self.anchor = Anchor::clay();
         self.network = Network::clay();
         self
     }
 
     pub fn production(&mut self) -> &mut Self {
-        self.anchor = Anchor::mainnet();
         self.network = Network::mainnet();
         self.indexing.enable_historical_sync = true;
         self.node.gateway = true;
@@ -397,85 +327,10 @@ impl Config {
     }
 }
 
-#[wasm_bindgen]
-#[derive(Clone)]
-pub struct WasmFileLogger {
-    pub enabled: bool,
-    #[wasm_bindgen(getter_with_clone)]
-    pub directory: String,
-}
-
-#[wasm_bindgen]
-pub struct WasmLogger {
-    #[wasm_bindgen(getter_with_clone)]
-    pub file: Option<WasmFileLogger>,
-    pub level: LogLevel,
-}
-
-#[wasm_bindgen]
-pub struct WasmIpfs {
-    #[wasm_bindgen(getter_with_clone)]
-    pub remote: Option<IpfsRemote>,
-}
-
-#[wasm_bindgen]
-pub struct WasmStateStore {
-    #[wasm_bindgen(getter_with_clone)]
-    pub local_directory: Option<String>,
-    #[wasm_bindgen(getter_with_clone)]
-    pub s3: Option<S3StateStore>,
-}
-
-#[wasm_bindgen]
 impl Config {
-    pub fn ipfs(&self) -> WasmIpfs {
-        if let Ipfs::Remote(remote) = &self.ipfs {
-            WasmIpfs {
-                remote: Some(remote.clone()),
-            }
-        } else {
-            WasmIpfs { remote: None }
-        }
-    }
-
-    pub fn cors_allowed_origins(&self) -> Vec<JsValue> {
-        self.http_api
-            .cors_allowed_origins
-            .iter()
-            .map(JsValue::from)
-            .collect()
-    }
-
-    pub fn admin_dids(&self) -> Vec<JsValue> {
-        self.http_api.admin_dids.iter().map(JsValue::from).collect()
-    }
-
-    pub fn state_store(&self) -> WasmStateStore {
-        match &self.state_store {
-            StateStore::LocalDirectory(dir) => WasmStateStore {
-                local_directory: Some(dir.to_string_lossy().to_string()),
-                s3: None,
-            },
-            StateStore::S3(s3) => WasmStateStore {
-                local_directory: None,
-                s3: Some(s3.clone()),
-            },
-        }
-    }
-
     pub fn eth_resolver_options(&self) -> Option<String> {
         let DidResolvers::Ethr(m) = &self.did_resolvers;
         Some(serde_json::to_string(m).unwrap_or_else(|_| String::default()))
-    }
-
-    pub fn logger(&self) -> WasmLogger {
-        WasmLogger {
-            level: self.logger.level,
-            file: self.logger.file.as_ref().map(|f| WasmFileLogger {
-                enabled: f.enabled,
-                directory: f.directory.to_string_lossy().to_string(),
-            }),
-        }
     }
 
     pub fn allows_sqlite(&self) -> bool {
@@ -490,16 +345,6 @@ pub fn from_file_err(file: String) -> anyhow::Result<Config> {
 
 pub fn from_string_err(json: &str) -> anyhow::Result<Config> {
     Ok(serde_json::from_str(json)?)
-}
-
-#[wasm_bindgen]
-pub fn from_file(file: String) -> Result<Config, JsValue> {
-    from_file_err(file).map_err(|e| JsValue::from(e.to_string()))
-}
-
-#[wasm_bindgen]
-pub fn from_string(json: String) -> Result<Config, JsValue> {
-    from_string_err(&json).map_err(|e| JsValue::from(e.to_string()))
 }
 
 #[cfg(test)]
