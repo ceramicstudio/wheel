@@ -16,13 +16,7 @@ pub async fn verify(cfg: &Config) -> anyhow::Result<()> {
             return Err(e.into());
         }
     } else {
-        if let Err(e) = sqlx::sqlite::SqliteConnection::connect(&cfg.indexing.db).await {
-            log::error!(
-                "Failed to connect to sqlite, aborting daemon startup\n    {}",
-                e
-            );
-            return Err(e.into());
-        }
+        log::info!("Connecting with sqlite, connection not verified");
     }
     Ok(())
 }

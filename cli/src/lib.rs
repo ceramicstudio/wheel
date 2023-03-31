@@ -189,6 +189,17 @@ pub async fn default_for_project_type(
             cfg.production();
         }
     }
+    if let ProjectType::InMemory | ProjectType::Local = project_type {
+        let abs_path = project.path.canonicalize()?.join("ceramic-indexing");
+        if !abs_path.exists() {
+            tokio::fs::create_dir_all(&abs_path).await?;
+        }
+        let sql_path = abs_path
+            .join("ceramic.sqlite")
+            .to_string_lossy()
+            .to_string();
+        cfg.indexing.db = format!("sqlite://{}", sql_path);
+    }
     cfg.http_api.admin_dids.push(doc.did().to_string());
 
     let mut f = tokio::fs::OpenOptions::new()
