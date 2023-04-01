@@ -29,7 +29,14 @@ impl Into<crate::daemon::DaemonConfig> for crate::Config {
             private_seed_url: None,
         };
         let anchor = match self.anchor {
-            Anchor::None => None,
+            Anchor::None => {
+                //TODO: This is a hack to get around the fact that the anchor service must be present
+                Some(crate::daemon::DaemonAnchorConfig {
+                    anchor_service_url: None,
+                    auth_method: None,
+                    ethereum_rpc_url: None,
+                })
+            }
             Anchor::RemoteIp(url) => {
                 log::info!("Anchor using {} with IP Authentication", url);
                 Some(crate::daemon::DaemonAnchorConfig {

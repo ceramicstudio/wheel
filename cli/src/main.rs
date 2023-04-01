@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
 enum Network {
+    InMemory,
     Local,
     Dev,
     Clay,
@@ -48,6 +49,7 @@ async fn main() -> anyhow::Result<()> {
 
     let opt_child = if let Some(network) = args.network {
         let project_type = match network {
+            Network::InMemory => wheel_3box::ProjectType::InMemory,
             Network::Local => wheel_3box::ProjectType::Local,
             Network::Dev => wheel_3box::ProjectType::Dev,
             Network::Clay => wheel_3box::ProjectType::Test,
