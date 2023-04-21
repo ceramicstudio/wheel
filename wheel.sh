@@ -18,7 +18,7 @@ then
     exit
 fi
 
-REPO=3box/wheel/releases
+REPO=ceramicstudio/wheel/releases
 ARCH=$(uname -m)
 if [[ $ARCH == 'arm64' ]]
 then
