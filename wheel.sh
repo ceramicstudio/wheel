@@ -36,7 +36,7 @@ TAR_NAME=wheel_$TARGET.tar.gz
 OUTPUT_FILE=wheel.tar.gz
 DOWNLOAD_URL=https://github.com/$REPO/download/$VERSION/$TAR_NAME
 
-echo "Downloading wheel for target "$TARGET" from "$DOWNLOAD_URL
+echo "Downloading wheel "$VERSION" for target "$TARGET" from "$DOWNLOAD_URL
 
 curl -LJ0 --output $OUTPUT_FILE $DOWNLOAD_URL
 
