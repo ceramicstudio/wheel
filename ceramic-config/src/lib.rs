@@ -156,7 +156,9 @@ impl Network {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum Anchor {
     None,
-    RemoteIp(String),
+    Ip {
+        url: String,
+    },
     RemoteDid {
         url: String,
         private_seed_url: String,

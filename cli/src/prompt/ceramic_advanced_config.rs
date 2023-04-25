@@ -1,24 +1,27 @@
 use ceramic_config::*;
 use inquire::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::did::DidAndPrivateKey;
 
-pub async fn prompt<'a, 'b, Fn, Fut>(
+pub async fn prompt<'a, 'b, Fn, Fut, P>(
+    working_directory: P,
     cfg: &'a mut Config,
     admin_did: &'b DidAndPrivateKey,
     mut func: Fn,
 ) -> anyhow::Result<()>
 where
+    P: AsRef<Path>,
     Fut: std::future::Future<Output = anyhow::Result<()>>,
-    Fn: FnMut(&'a mut Config, &'b DidAndPrivateKey) -> Fut,
+    Fn: FnMut(P, &'a mut Config, &'b DidAndPrivateKey) -> Fut,
 {
     let ans = Confirm::new(&format!("Step through ceramic configuration?"))
+        .with_default(false)
         .with_help_message("Step through interactive prompts to configure ceramic node")
-        .prompt_skippable()?;
+        .prompt()?;
 
-    if let Some(true) = ans {
-        func(cfg, admin_did).await?;
+    if ans {
+        func(working_directory, cfg, admin_did).await?;
     }
 
     Ok(())
@@ -72,6 +75,8 @@ pub async fn configure_state_store(cfg: &mut Config) -> anyhow::Result<()> {
         if !location.exists() {
             if Confirm::new("Directory does not exist, create it?").prompt()? {
                 tokio::fs::create_dir_all(location.clone()).await?;
+            } else {
+                log::warn!("Not creating directory, ceramic will fail to start");
             }
         }
         StateStore::LocalDirectory(location)
@@ -136,21 +141,26 @@ fn configure_network(cfg: &mut Config) -> anyhow::Result<()> {
 }
 
 pub fn configure_anchor(cfg: &mut Config) -> anyhow::Result<()> {
-    let url = if Confirm::new("Override Network CAS Url?").prompt()? {
+    let url = if Confirm::new("Override Network CAS Url?")
+        .with_default(false)
+        .prompt()?
+    {
         Some(Text::new("Anchor Service Url").prompt()?)
     } else {
         Anchor::url_for_network(&cfg.network.id)
     };
     cfg.anchor = if let Some(url) = url {
-        if let Some(private_seed_url) =
-            Text::new("Private key (skip for IP Authentication)?").prompt_skippable()?
-        {
+        if let Some(private_key) = Text::new("Private key for DID Authentication (Skip for IP Authentication)?")
+            .with_help_message("Please see https://composedb.js.org/docs/0.4.x/guides/composedb-server/access-mainnet#updating-to-did-based-authentication for more information")
+            .prompt_skippable()? {
             Anchor::RemoteDid {
                 url,
-                private_seed_url,
+                private_seed_url: private_key,
             }
         } else {
-            Anchor::RemoteIp(url)
+            Anchor::Ip {
+                url
+            }
         }
     } else {
         Anchor::None
@@ -160,17 +170,34 @@ pub fn configure_anchor(cfg: &mut Config) -> anyhow::Result<()> {
 
 pub fn configure_node(cfg: &mut Config) -> anyhow::Result<()> {
     let gateway = Confirm::new("Run as gateway?")
+        .with_help_message("Gateway nodes cannot perform mutations")
         .with_default(true)
         .prompt()?;
     cfg.node.gateway = gateway;
     Ok(())
 }
 
-pub fn configure_indexing(cfg: &mut Config) -> anyhow::Result<()> {
-    cfg.indexing.db = Text::new("Database Connection String")
-        .with_help_message("Support Postgresql and Sqlite. Sqlite is not allowed on production")
-        .with_default(&cfg.indexing.db)
-        .prompt()?;
+pub fn configure_indexing<P: AsRef<Path>>(
+    working_directory: P,
+    cfg: &mut Config,
+) -> anyhow::Result<()> {
+    if let Some(db) =
+        Text::new("Database Connection String? (Escape to use sqlite with project directory)")
+            .with_help_message(
+                r#"Indexing database connection string. Examples:
+    postgres://user:password@localhost:5432/ceramic
+    sqlite:///directory-for-ceramic
+Sqlite is not allowed for production ceramic instances.
+"#,
+            )
+            .with_default(&cfg.indexing.db)
+            .prompt_skippable()?
+    {
+        cfg.indexing.db = db;
+    } else {
+        cfg.indexing.db = format!("sqlite://{}", working_directory.as_ref().display());
+    }
+
     if !cfg.allows_sqlite() {
         if cfg.indexing.db.starts_with("sqlite") {
             anyhow::bail!("sqlite not allowed in environment {}", cfg.network.id);
@@ -180,7 +207,8 @@ pub fn configure_indexing(cfg: &mut Config) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub async fn configure<'a, 'b>(
+pub async fn configure<'a, 'b, P: AsRef<Path>>(
+    working_directory: P,
     cfg: &'a mut Config,
     admin_did: &'b DidAndPrivateKey,
 ) -> anyhow::Result<()> {
@@ -190,7 +218,7 @@ pub async fn configure<'a, 'b>(
     configure_network(cfg)?;
     configure_anchor(cfg)?;
     configure_node(cfg)?;
-    configure_indexing(cfg)?;
+    configure_indexing(working_directory, cfg)?;
 
     Ok(())
 }

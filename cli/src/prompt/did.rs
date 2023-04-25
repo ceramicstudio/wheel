@@ -1,5 +1,6 @@
 use inquire::*;
 use std::path::{Path, PathBuf};
+use tokio::io::AsyncWriteExt;
 
 use crate::did::DidAndPrivateKey;
 
@@ -17,18 +18,31 @@ impl std::fmt::Display for DidSelect {
     }
 }
 
-pub async fn generate_did(path: &Path) -> anyhow::Result<DidAndPrivateKey> {
+pub async fn generate_did(path: impl AsRef<Path>) -> anyhow::Result<DidAndPrivateKey> {
     let ans = Select::new(
         "Admin DID Configuration",
         vec![DidSelect::Generate, DidSelect::Input],
     )
-    .with_help_message("Step through interactive prompts to configure ceramic node")
+    .with_help_message("Whether DID should be input from file, or generated")
     .prompt()?;
 
-    let default_admin_key_location = path.join("admin.json");
+    let default_admin_key_location = path.as_ref().join("admin.json");
 
     let doc = match ans {
-        DidSelect::Generate => crate::did::DidAndPrivateKey::generate(),
+        DidSelect::Generate => {
+            let doc = DidAndPrivateKey::generate()?;
+            if let Some(p) = Text::new("File to save DID private key to? (Escape to skip)")
+                .with_default(&path.as_ref().join("admin.pk").to_string_lossy())
+                .prompt_skippable()?
+            {
+                let mut opts = tokio::fs::OpenOptions::new();
+                opts.write(true).create(true).append(false);
+                let mut f = opts.open(p).await?;
+                f.write(doc.pk().as_bytes()).await?;
+                f.flush().await?;
+            }
+            Ok(doc)
+        }
         DidSelect::Input => {
             let k = Password::new("Admin DID Private Key").prompt()?;
             let p = Text::new("Path to Admin DID File")

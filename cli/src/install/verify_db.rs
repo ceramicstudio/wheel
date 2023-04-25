@@ -1,5 +1,6 @@
 use ceramic_config::Config;
 use sqlx::Connection;
+use std::path::PathBuf;
 
 pub async fn verify(cfg: &Config) -> anyhow::Result<()> {
     log::info!(
@@ -16,7 +17,14 @@ pub async fn verify(cfg: &Config) -> anyhow::Result<()> {
             return Err(e.into());
         }
     } else {
-        log::info!("Connecting with sqlite, connection not verified");
+        let (_, path) = cfg.indexing.db.split_once("://").unwrap();
+        let p = PathBuf::from(path);
+        log::info!("Verifying sqlite path exists at {}", p.display());
+        if !tokio::fs::try_exists(p).await? {
+            let err = anyhow::anyhow!("Cannot connect sqlite at path {}, aborting startup", path);
+            log::error!("{}", err.to_string());
+            return Err(err);
+        }
     }
     Ok(())
 }

@@ -6,15 +6,13 @@ use tokio::task::JoinHandle;
 use crate::install::log_async_errors;
 use crate::install::verify_db;
 use ceramic_config::Config;
-use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
-
-const DAEMON_CONFIG: &'static str = "daemon_config.json";
 
 pub async fn install_ceramic_daemon(
     working_directory: &Path,
     cfg: &Config,
     version: &Option<semver::Version>,
+    ceramic_config_file: &Path,
     quiet: bool,
 ) -> anyhow::Result<Option<JoinHandle<()>>> {
     verify_db::verify(&cfg).await?;
@@ -45,19 +43,6 @@ pub async fn install_ceramic_daemon(
         anyhow::bail!("Failed to install ceramic cli");
     }
 
-    let cfg_file_path = working_directory.join(DAEMON_CONFIG);
-    let daemon_config: ceramic_config::DaemonConfig = cfg.clone().into();
-    let mut f = tokio::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .append(false)
-        .open(&cfg_file_path)
-        .await?;
-    f.write_all(serde_json::to_string(&daemon_config)?.as_bytes())
-        .await?;
-    f.flush().await?;
-
     let ans = if quiet {
         true
     } else {
@@ -71,7 +56,7 @@ pub async fn install_ceramic_daemon(
     let ret = if ans {
         log::info!(
             "Starting ceramic as a daemon, using config file {} and binary {}",
-            cfg_file_path.display(),
+            ceramic_config_file.display(),
             working_directory.join(&ceramic_path).display()
         );
         let mut cmd = Command::new("node");
@@ -81,7 +66,7 @@ pub async fn install_ceramic_daemon(
                 ceramic_path.to_string_lossy().as_ref(),
                 "daemon",
                 "--config",
-                DAEMON_CONFIG,
+                &ceramic_config_file.display().to_string(),
             ])
             .current_dir(working_directory)
             .kill_on_drop(false)
@@ -117,7 +102,7 @@ When you would like to run ceramic please run
         "#,
         working_directory.display(),
         ceramic_path.display(),
-        DAEMON_CONFIG
+        ceramic_config_file.display()
     );
 
     Ok(ret)

@@ -37,11 +37,11 @@ impl Into<crate::daemon::DaemonConfig> for crate::Config {
                     ethereum_rpc_url: None,
                 })
             }
-            Anchor::RemoteIp(url) => {
-                log::info!("Anchor using {} with IP Authentication", url);
+            Anchor::Ip { url } => {
+                log::warn!("Anchor using {} with IP Authentication. Please see https://composedb.js.org/docs/0.4.x/guides/composedb-server/access-mainnet#updating-to-did-based-authentication to use IP authentication", url);
                 Some(crate::daemon::DaemonAnchorConfig {
                     anchor_service_url: Some(url),
-                    auth_method: Some("did".to_string()),
+                    auth_method: None,
                     ethereum_rpc_url: None,
                 })
             }

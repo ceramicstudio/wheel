@@ -1,5 +1,6 @@
 use clap::{Parser, ValueEnum};
 use log::LevelFilter;
+use std::io::Write;
 use std::path::PathBuf;
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
@@ -31,6 +32,7 @@ struct ProgramArgs {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let _ = env_logger::builder()
+        .format(|buf, record| writeln!(buf, "{}", record.args()))
         .filter_level(LevelFilter::Info)
         .try_init();
     let args = ProgramArgs::parse();
@@ -74,6 +76,8 @@ async fn main() -> anyhow::Result<()> {
     if let Some(child) = opt_child {
         log::info!("Ceramic is now running in the background. Please use another terminal for additional commands. You can interrupt ceramic using ctrl-c.");
         child.await?;
+    } else {
+        log::info!("Wheel setup is complete.");
     }
 
     Ok(())
