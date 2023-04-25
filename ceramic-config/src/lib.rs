@@ -78,7 +78,7 @@ impl Default for HttpApi {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum NetworkIdentifier {
     InMemory,
     Local,
@@ -113,42 +113,23 @@ pub struct Network {
 
 impl Default for Network {
     fn default() -> Self {
-        Self::dev()
+        Self {
+            id: NetworkIdentifier::default(),
+            pubsub_topic: None,
+        }
     }
 }
 
 impl Network {
-    pub fn in_memory() -> Self {
+    pub fn new(id: &NetworkIdentifier, name: &str) -> Self {
+        let topic = if NetworkIdentifier::Local == *id {
+            Some(format!("/ceramic/local-topic-{}", name))
+        } else {
+            None
+        };
         Self {
-            id: NetworkIdentifier::InMemory,
-            pubsub_topic: None,
-        }
-    }
-    pub fn local(name: &str) -> Self {
-        Self {
-            id: NetworkIdentifier::Local,
-            pubsub_topic: Some(format!("/ceramic/local-topic-{}", name)),
-        }
-    }
-
-    pub fn dev() -> Self {
-        Self {
-            id: NetworkIdentifier::Dev,
-            pubsub_topic: None, //"/ceramic/dev-unstable".to_string(),
-        }
-    }
-
-    pub fn clay() -> Self {
-        Self {
-            id: NetworkIdentifier::Clay,
-            pubsub_topic: None, //"/ceramic/testnet-clay".to_string(),
-        }
-    }
-
-    pub fn mainnet() -> Self {
-        Self {
-            id: NetworkIdentifier::Mainnet,
-            pubsub_topic: None, //"/ceramic/mainnet".to_string(),
+            id: *id,
+            pubsub_topic: topic,
         }
     }
 }
@@ -174,8 +155,10 @@ impl Default for Anchor {
 impl Anchor {
     pub fn url_for_network(id: &NetworkIdentifier) -> Option<String> {
         match id {
-            NetworkIdentifier::InMemory | NetworkIdentifier::Local => None,
-            NetworkIdentifier::Dev => Some("https://cas-qa.3boxlabs.com/".to_string()),
+            NetworkIdentifier::InMemory => None,
+            NetworkIdentifier::Local | NetworkIdentifier::Dev => {
+                Some("https://cas-qa.3boxlabs.com/".to_string())
+            }
             NetworkIdentifier::Clay => Some("https://cas-clay.3boxlabs.com/".to_string()),
             NetworkIdentifier::Mainnet => Some("https://cas.3boxlabs.com/".to_string()),
         }
@@ -298,34 +281,31 @@ pub struct Config {
     pub metrics: Metrics,
 }
 
+pub struct CasAuth {
+    pub url: String,
+    pub pk: Option<String>,
+}
+
 impl Config {
-    pub fn in_memory(&mut self) -> &mut Self {
-        self.anchor = Anchor::None;
-        self.network = Network::in_memory();
-        self
-    }
-
-    pub fn local(&mut self, name: &str) -> &mut Self {
-        self.anchor = Anchor::None;
-        self.network = Network::local(name);
-        self
-    }
-
-    pub fn dev(&mut self) -> &mut Self {
-        self.network = Network::dev();
-        self
-    }
-
-    pub fn test(&mut self) -> &mut Self {
-        self.network = Network::clay();
-        self
-    }
-
-    pub fn production(&mut self) -> &mut Self {
-        self.network = Network::mainnet();
-        self.indexing.enable_historical_sync = true;
-        self.node.gateway = true;
-        self
+    pub fn new(id: &NetworkIdentifier, name: &str, cas_auth: Option<CasAuth>) -> Self {
+        let mut cfg = Self::default();
+        cfg.network = Network::new(id, name);
+        cfg.anchor = if let Some(auth) = cas_auth {
+            if let Some(p) = auth.pk {
+                Anchor::RemoteDid {
+                    url: auth.url,
+                    private_seed_url: p,
+                }
+            } else {
+                Anchor::Ip { url: auth.url }
+            }
+        } else {
+            Anchor::None
+        };
+        if NetworkIdentifier::Mainnet == *id {
+            cfg.indexing.enable_historical_sync = true;
+        }
+        cfg
     }
 }
 

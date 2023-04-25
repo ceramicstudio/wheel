@@ -9,11 +9,15 @@ Run the following to install wheel
 
 Please follow the instructions that follow.
 
-If you don't want to step through prompts at all, you can use wheel in "default" mode
+If you don't want to step through prompts at all, you can use wheel in "quiet" mode, which will default to clay
 
-    wheel --working-directory <path to setup your work in> --network <one of inmemory|local|dev|clay|mainnet> --no-interactive
+    wheel --working-directory <path to setup your work in> quiet  --network <one of inmemory|local|dev|clay|mainnet> --did <did> --pk <pk>
 
-Please run `wheel --help` for more options.
+This requires you to have already setup a DID and [CAS Auth](#cas-auth). Please run `wheel --help` for more options.
+
+### CAS Auth
+All networks other than InMemory require CAS authorization. Wheel will walk you through setting up CAS authorization, but
+for more information see https://composedb.js.org/docs/0.4.x/guides/composedb-server/access-mainnet#step-1-start-your-node-and-copy-your-key-did.
 
 ## Setting up Postgres
 For production ceramic nodes, postgres is required. Visit https://www.postgresql.org/download/ to install postgres.

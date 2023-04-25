@@ -1,4 +1,0 @@
-# Wheel
-
-ComposeDB setup tool.
-

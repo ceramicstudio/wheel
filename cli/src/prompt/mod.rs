@@ -1,3 +1,4 @@
+pub mod cas_auth;
 pub mod ceramic_advanced_config;
 pub mod ceramic_local_config;
 pub mod ceramic_remote_config;

@@ -140,34 +140,6 @@ fn configure_network(cfg: &mut Config) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn configure_anchor(cfg: &mut Config) -> anyhow::Result<()> {
-    let url = if Confirm::new("Override Network CAS Url?")
-        .with_default(false)
-        .prompt()?
-    {
-        Some(Text::new("Anchor Service Url").prompt()?)
-    } else {
-        Anchor::url_for_network(&cfg.network.id)
-    };
-    cfg.anchor = if let Some(url) = url {
-        if let Some(private_key) = Text::new("Private key for DID Authentication (Skip for IP Authentication)?")
-            .with_help_message("Please see https://composedb.js.org/docs/0.4.x/guides/composedb-server/access-mainnet#updating-to-did-based-authentication for more information")
-            .prompt_skippable()? {
-            Anchor::RemoteDid {
-                url,
-                private_seed_url: private_key,
-            }
-        } else {
-            Anchor::Ip {
-                url
-            }
-        }
-    } else {
-        Anchor::None
-    };
-    Ok(())
-}
-
 pub fn configure_node(cfg: &mut Config) -> anyhow::Result<()> {
     let gateway = Confirm::new("Run as gateway?")
         .with_help_message("Gateway nodes cannot perform mutations")
@@ -216,7 +188,6 @@ pub async fn configure<'a, 'b, P: AsRef<Path>>(
     configure_state_store(cfg).await?;
     configure_http_api(cfg, admin_did)?;
     configure_network(cfg)?;
-    configure_anchor(cfg)?;
     configure_node(cfg)?;
     configure_indexing(working_directory, cfg)?;
 

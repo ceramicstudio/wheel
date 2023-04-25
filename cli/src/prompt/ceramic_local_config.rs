@@ -10,6 +10,5 @@ pub async fn configure<'a, 'b, P: AsRef<Path>>(
 ) -> anyhow::Result<()> {
     super::ceramic_advanced_config::configure_http_api(cfg, admin_did)?;
     super::ceramic_advanced_config::configure_indexing(working_directory, cfg)?;
-    super::ceramic_advanced_config::configure_anchor(cfg)?;
     Ok(())
 }

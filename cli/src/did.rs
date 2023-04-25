@@ -16,6 +16,10 @@ impl DidAndPrivateKey {
         }
     }
 
+    pub fn cas_auth(&self) -> String {
+        format!("inplace:ed25519#{}", self.private_key)
+    }
+
     pub fn did(&self) -> &str {
         &self.document.id
     }

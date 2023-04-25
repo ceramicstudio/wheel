@@ -2,6 +2,9 @@ mod did;
 mod install;
 mod prompt;
 
+pub use crate::did::DidAndPrivateKey;
+pub use ceramic_config::NetworkIdentifier;
+use ceramic_config::{Anchor, CasAuth, Config};
 use inquire::*;
 use prompt::project::Project;
 use std::path::{Path, PathBuf};
@@ -11,57 +14,28 @@ use tokio::{io::AsyncWriteExt, task::JoinHandle};
 pub struct Versions {
     pub ceramic: Option<semver::Version>,
     pub composedb: Option<semver::Version>,
-    pub app_template: Option<semver::Version>,
-}
-
-pub enum ProjectType {
-    InMemory,
-    Local,
-    Dev,
-    Test,
-    Production,
-    Advanced,
-}
-
-impl std::fmt::Display for ProjectType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::InMemory => write!(f, "InMemory"),
-            Self::Local => write!(f, "Local"),
-            Self::Dev => write!(f, "Dev"),
-            Self::Test => write!(f, "Test (Clay)"),
-            Self::Production => write!(f, "Production (Mainnet)"),
-            Self::Advanced => write!(f, "Advanced"),
-        }
-    }
 }
 
 pub async fn interactive(
     working_directory: PathBuf,
     versions: Versions,
 ) -> anyhow::Result<Option<JoinHandle<()>>> {
-    let ans = Select::new(
+    let network_identifier = Select::new(
         "Project Type",
         vec![
-            ProjectType::InMemory,
-            ProjectType::Local,
-            ProjectType::Dev,
-            ProjectType::Test,
-            ProjectType::Production,
-            ProjectType::Advanced,
+            NetworkIdentifier::Local,
+            NetworkIdentifier::Dev,
+            NetworkIdentifier::Clay,
+            NetworkIdentifier::Mainnet,
         ],
     )
     .with_help_message("Local nodes will not anchor")
     .prompt()?;
 
-    for_project_type(working_directory, ans, versions).await
-}
+    let advanced = Confirm::new("Advanced configuration?")
+        .with_default(false)
+        .prompt()?;
 
-pub async fn for_project_type(
-    working_directory: PathBuf,
-    project_type: ProjectType,
-    versions: Versions,
-) -> anyhow::Result<Option<JoinHandle<()>>> {
     let project = prompt::project::configure_project(&working_directory).await?;
 
     let with_ceramic = Confirm::new("Include Ceramic?")
@@ -76,7 +50,8 @@ pub async fn for_project_type(
         false
     };
 
-    let doc = prompt::did::generate_did(&project.path).await?;
+    let doc = prompt::did::prompt(&project.path).await?;
+    let cas_auth = prompt::cas_auth::prompt(&doc, &network_identifier).await?;
 
     let cfg_file_path = project.path.join("ceramic.json");
     let cfg_file_path = Text::new("Wheel config file location")
@@ -88,90 +63,59 @@ pub async fn for_project_type(
         let cfg = serde_json::from_slice(data.as_slice())?;
         cfg
     } else {
-        ceramic_config::Config::default()
+        Config::new(&network_identifier, &project.name, cas_auth)
     };
 
     cfg.http_api.admin_dids.push(doc.did().to_string());
 
-    match project_type {
-        ProjectType::InMemory => {
-            cfg.in_memory();
-            prompt::prompt(&project.path, &mut cfg, &doc, prompt::local_config).await?;
-        }
-        ProjectType::Local => {
-            cfg.local(&project.name);
-            prompt::prompt(&project.path, &mut cfg, &doc, prompt::local_config).await?;
-        }
-        ProjectType::Dev => {
-            prompt::prompt(&project.path, &mut cfg, &doc, prompt::local_config).await?;
-            cfg.dev();
-        }
-        ProjectType::Advanced => {
-            prompt::prompt(&project.path, &mut cfg, &doc, prompt::advanced_config).await?;
-        }
-        ProjectType::Test => {
-            cfg.test();
-            prompt::prompt(&project.path, &mut cfg, &doc, prompt::remote_config).await?;
-        }
-        ProjectType::Production => {
-            cfg.production();
-            prompt::prompt(&project.path, &mut cfg, &doc, prompt::remote_config).await?;
+    if advanced {
+        prompt::prompt(&project.path, &mut cfg, &doc, prompt::advanced_config).await?;
+    } else {
+        match network_identifier {
+            NetworkIdentifier::InMemory => {
+                prompt::prompt(&project.path, &mut cfg, &doc, prompt::local_config).await?;
+            }
+            NetworkIdentifier::Local => {
+                prompt::prompt(&project.path, &mut cfg, &doc, prompt::local_config).await?;
+            }
+            NetworkIdentifier::Dev => {
+                prompt::prompt(&project.path, &mut cfg, &doc, prompt::remote_config).await?;
+            }
+            NetworkIdentifier::Clay => {
+                prompt::prompt(&project.path, &mut cfg, &doc, prompt::remote_config).await?;
+            }
+            NetworkIdentifier::Mainnet => {
+                prompt::prompt(&project.path, &mut cfg, &doc, prompt::remote_config).await?;
+            }
         }
     }
 
-    let mut f = tokio::fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .open(&cfg_file_path)
-        .await?;
-    f.write_all(serde_json::to_string(&cfg)?.as_bytes()).await?;
-    f.flush().await?;
-
-    let ceramic_config_file = write_daemon_config(&project.path, &cfg).await?;
-
-    let opt_child = if with_ceramic {
-        let opt_child = install::ceramic_daemon::install_ceramic_daemon(
-            &project.path,
-            &cfg,
-            &versions.ceramic,
-            &ceramic_config_file,
-            false,
-        )
-        .await?;
-        if with_composedb {
-            install::compose_db::install_compose_db(&cfg, &doc, &project.path, &versions.composedb)
-                .await?;
-
-            //TODO: Replace with eth denver app
-            // if Confirm::new("Install ComposeDB App Template (Next.js)?")
-            //     .with_default(false)
-            //     .prompt()?
-            // {
-            //     install::ceramic_app_template::install_ceramic_app_template(
-            //         &project.path,
-            //         &versions.app_template,
-            //     )
-            //     .await?;
-            // }
-        }
-
-        opt_child
-    } else {
-        None
-    };
-
-    Ok(opt_child)
+    finish_setup(
+        project,
+        cfg,
+        cfg_file_path,
+        doc,
+        versions,
+        with_ceramic,
+        with_composedb,
+        false,
+    )
+    .await
 }
 
-pub async fn default_for_project_type(
-    working_directory: PathBuf,
-    project_type: ProjectType,
-    versions: Versions,
-    with_composedb: bool,
-) -> anyhow::Result<Option<JoinHandle<()>>> {
+pub struct QuietOptions {
+    pub working_directory: PathBuf,
+    pub network_identifier: NetworkIdentifier,
+    pub versions: Versions,
+    pub did: DidAndPrivateKey,
+    pub with_ceramic: bool,
+    pub with_composedb: bool,
+}
+
+pub async fn quiet(opts: QuietOptions) -> anyhow::Result<Option<JoinHandle<()>>> {
     let project = Project {
         name: "ceramic-app".to_string(),
-        path: working_directory,
+        path: opts.working_directory,
     };
 
     if !project.path.exists() {
@@ -182,32 +126,14 @@ pub async fn default_for_project_type(
         tokio::fs::create_dir_all(&project.path).await?;
     }
 
-    let doc = crate::did::DidAndPrivateKey::generate()?;
-
+    let cas_auth = Anchor::url_for_network(&opts.network_identifier).map(|url| {
+        let pk = opts.did.cas_auth();
+        CasAuth { url, pk: Some(pk) }
+    });
     let cfg_file_path = project.path.join("ceramic.json");
-    let mut cfg = ceramic_config::Config::default();
+    let mut cfg = ceramic_config::Config::new(&opts.network_identifier, &project.name, cas_auth);
 
-    match project_type {
-        ProjectType::InMemory => {
-            cfg.in_memory();
-        }
-        ProjectType::Local => {
-            cfg.local(&project.name);
-        }
-        ProjectType::Dev => {
-            cfg.dev();
-        }
-        ProjectType::Advanced => {
-            anyhow::bail!("Advanced config not supported for a default project");
-        }
-        ProjectType::Test => {
-            cfg.test();
-        }
-        ProjectType::Production => {
-            cfg.production();
-        }
-    }
-    if let ProjectType::InMemory | ProjectType::Local = project_type {
+    if let NetworkIdentifier::InMemory | NetworkIdentifier::Local = opts.network_identifier {
         let abs_path = project.path.canonicalize()?.join("ceramic-indexing");
         if !abs_path.exists() {
             tokio::fs::create_dir_all(&abs_path).await?;
@@ -218,8 +144,31 @@ pub async fn default_for_project_type(
             .to_string();
         cfg.indexing.db = format!("sqlite://{}", sql_path);
     }
-    cfg.http_api.admin_dids.push(doc.did().to_string());
+    cfg.http_api.admin_dids.push(opts.did.did().to_string());
 
+    finish_setup(
+        project,
+        cfg,
+        cfg_file_path,
+        opts.did,
+        opts.versions,
+        opts.with_ceramic,
+        opts.with_composedb,
+        true,
+    )
+    .await
+}
+
+async fn finish_setup(
+    project: Project,
+    cfg: Config,
+    cfg_file_path: PathBuf,
+    doc: DidAndPrivateKey,
+    versions: Versions,
+    with_ceramic: bool,
+    with_composedb: bool,
+    quiet: bool,
+) -> anyhow::Result<Option<JoinHandle<()>>> {
     log::info!("Saving config to {}", cfg_file_path.display());
     let mut f = tokio::fs::OpenOptions::new()
         .write(true)
@@ -231,18 +180,23 @@ pub async fn default_for_project_type(
 
     let daemon_config_file = write_daemon_config(&project.path, &cfg).await?;
 
-    let opt_child = install::ceramic_daemon::install_ceramic_daemon(
-        &project.path,
-        &cfg,
-        &versions.ceramic,
-        &daemon_config_file,
-        true,
-    )
-    .await?;
-    if with_composedb {
-        install::compose_db::install_compose_db(&cfg, &doc, &project.path, &versions.composedb)
-            .await?;
-    }
+    let opt_child = if with_ceramic {
+        let opt_child = install::ceramic_daemon::install_ceramic_daemon(
+            &project.path,
+            &cfg,
+            &versions.ceramic,
+            &daemon_config_file,
+            quiet,
+        )
+        .await?;
+        if with_composedb {
+            install::compose_db::install_compose_db(&cfg, &doc, &project.path, &versions.composedb)
+                .await?;
+        }
+        opt_child
+    } else {
+        None
+    };
 
     Ok(opt_child)
 }

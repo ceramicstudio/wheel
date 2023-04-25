@@ -18,7 +18,7 @@ impl std::fmt::Display for DidSelect {
     }
 }
 
-pub async fn generate_did(path: impl AsRef<Path>) -> anyhow::Result<DidAndPrivateKey> {
+pub async fn prompt(path: impl AsRef<Path>) -> anyhow::Result<DidAndPrivateKey> {
     let ans = Select::new(
         "Admin DID Configuration",
         vec![DidSelect::Generate, DidSelect::Input],
