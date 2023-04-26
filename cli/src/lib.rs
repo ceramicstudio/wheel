@@ -58,13 +58,8 @@ pub async fn interactive(
         .with_default(cfg_file_path.to_string_lossy().as_ref())
         .prompt()?;
     let cfg_file_path = PathBuf::from(cfg_file_path);
-    let mut cfg = if cfg_file_path.exists() {
-        let data = tokio::fs::read(cfg_file_path.clone()).await?;
-        let cfg = serde_json::from_slice(data.as_slice())?;
-        cfg
-    } else {
-        Config::new(&network_identifier, &project.name, cas_auth)
-    };
+    let mut cfg =
+        get_or_create_config(&project, &network_identifier, cas_auth, &cfg_file_path).await?;
 
     cfg.http_api.admin_dids.push(doc.did().to_string());
 
@@ -131,7 +126,8 @@ pub async fn quiet(opts: QuietOptions) -> anyhow::Result<Option<JoinHandle<()>>>
         CasAuth { url, pk: Some(pk) }
     });
     let cfg_file_path = project.path.join("ceramic.json");
-    let mut cfg = ceramic_config::Config::new(&opts.network_identifier, &project.name, cas_auth);
+    let mut cfg =
+        get_or_create_config(&project, &opts.network_identifier, cas_auth, &cfg_file_path).await?;
 
     if let NetworkIdentifier::InMemory | NetworkIdentifier::Local = opts.network_identifier {
         let abs_path = project.path.canonicalize()?.join("ceramic-indexing");
@@ -219,4 +215,24 @@ async fn write_daemon_config(
         .await?;
     f.flush().await?;
     Ok(cfg_file_path)
+}
+
+async fn get_or_create_config(
+    project: &Project,
+    network_identifier: &NetworkIdentifier,
+    cas_auth: Option<CasAuth>,
+    cfg_file_path: impl AsRef<Path>,
+) -> anyhow::Result<Config> {
+    let cfg = if cfg_file_path.as_ref().exists() {
+        let data = tokio::fs::read(cfg_file_path.as_ref()).await?;
+        let cfg = serde_json::from_slice(data.as_slice())?;
+        cfg
+    } else {
+        let mut cfg = Config::new(network_identifier, &project.name, cas_auth);
+        if network_identifier == &NetworkIdentifier::InMemory {
+            cfg.indexing.db = format!("sqlite://{}/ceramic.db", project.path.display());
+        }
+        cfg
+    };
+    Ok(cfg)
 }
