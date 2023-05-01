@@ -23,14 +23,17 @@ pub async fn interactive(
     let network_identifier = Select::new(
         "Project Type",
         vec![
+            NetworkIdentifier::InMemory,
             NetworkIdentifier::Local,
             NetworkIdentifier::Dev,
             NetworkIdentifier::Clay,
             NetworkIdentifier::Mainnet,
         ],
     )
-    .with_help_message("Local nodes will not anchor")
+    .with_help_message("InMemory nodes will not anchor")
     .prompt()?;
+
+    log::info!("Starting configuration for {} project", network_identifier);
 
     let advanced = Confirm::new("Advanced configuration?")
         .with_default(false)
@@ -51,7 +54,11 @@ pub async fn interactive(
     };
 
     let doc = prompt::did::prompt(&project.path).await?;
-    let cas_auth = prompt::cas_auth::prompt(&doc, &network_identifier).await?;
+    let cas_auth = if NetworkIdentifier::InMemory == network_identifier {
+        None
+    } else {
+        prompt::cas_auth::prompt(&doc, &network_identifier).await?
+    };
 
     let cfg_file_path = project.path.join("ceramic.json");
     let cfg_file_path = Text::new("Wheel config file location")
@@ -224,8 +231,13 @@ async fn get_or_create_config(
     cfg_file_path: impl AsRef<Path>,
 ) -> anyhow::Result<Config> {
     let cfg = if cfg_file_path.as_ref().exists() {
+        log::info!(
+            "Initializing config with previous information from {}",
+            cfg_file_path.as_ref().display()
+        );
         let data = tokio::fs::read(cfg_file_path.as_ref()).await?;
-        let cfg = serde_json::from_slice(data.as_slice())?;
+        let mut cfg: Config = serde_json::from_slice(data.as_slice())?;
+        cfg.initialize(network_identifier, &project.name, cas_auth);
         cfg
     } else {
         let mut cfg = Config::new(network_identifier, &project.name, cas_auth);

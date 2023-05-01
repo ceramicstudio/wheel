@@ -1,6 +1,7 @@
 mod convert;
 mod daemon;
 
+pub use convert::convert_network_identifier;
 pub use daemon::DaemonConfig;
 
 use serde::{Deserialize, Serialize};
@@ -289,8 +290,18 @@ pub struct CasAuth {
 impl Config {
     pub fn new(id: &NetworkIdentifier, name: &str, cas_auth: Option<CasAuth>) -> Self {
         let mut cfg = Self::default();
-        cfg.network = Network::new(id, name);
-        cfg.anchor = if let Some(auth) = cas_auth {
+        cfg.initialize(id, name, cas_auth);
+        cfg
+    }
+
+    pub fn initialize(
+        &mut self,
+        id: &NetworkIdentifier,
+        name: &str,
+        cas_auth: Option<CasAuth>,
+    ) -> &mut Self {
+        self.network = Network::new(id, name);
+        self.anchor = if let Some(auth) = cas_auth {
             if let Some(p) = auth.pk {
                 Anchor::RemoteDid {
                     url: auth.url,
@@ -303,9 +314,9 @@ impl Config {
             Anchor::None
         };
         if NetworkIdentifier::Mainnet == *id {
-            cfg.indexing.enable_historical_sync = true;
+            self.indexing.enable_historical_sync = true;
         }
-        cfg
+        self
     }
 }
 

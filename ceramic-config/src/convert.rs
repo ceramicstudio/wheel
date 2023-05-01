@@ -10,13 +10,13 @@ fn convert_log_level(level: LogLevel) -> u16 {
     }
 }
 
-fn convert_network_identifier(id: NetworkIdentifier) -> String {
+pub fn convert_network_identifier(id: &NetworkIdentifier) -> &'static str {
     match id {
-        NetworkIdentifier::InMemory => "inmemory".to_string(),
-        NetworkIdentifier::Local => "local".to_string(),
-        NetworkIdentifier::Dev => "dev-unstable".to_string(),
-        NetworkIdentifier::Clay => "testnet-clay".to_string(),
-        NetworkIdentifier::Mainnet => "mainnet".to_string(),
+        NetworkIdentifier::InMemory => "inmemory",
+        NetworkIdentifier::Local => "local",
+        NetworkIdentifier::Dev => "dev-unstable",
+        NetworkIdentifier::Clay => "testnet-clay",
+        NetworkIdentifier::Mainnet => "mainnet",
     }
 }
 
@@ -102,7 +102,7 @@ impl Into<crate::daemon::DaemonConfig> for crate::Config {
             }
         };
         let network = Some(crate::daemon::DaemonNetworkConfig {
-            name: Some(convert_network_identifier(self.network.id)),
+            name: Some(convert_network_identifier(&self.network.id).to_string()),
             pubsub_topic: self.network.pubsub_topic,
         });
         let state_store = Some(match self.state_store {

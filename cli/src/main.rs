@@ -77,6 +77,7 @@ async fn main() -> anyhow::Result<()> {
     let _ = env_logger::builder()
         .format(|buf, record| writeln!(buf, "{}", record.args()))
         .filter_level(LevelFilter::Info)
+        .filter_module("sqlx", LevelFilter::Warn)
         .try_init();
     let args = ProgramArgs::parse();
     let current_directory = std::env::current_dir()?;
