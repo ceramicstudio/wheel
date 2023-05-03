@@ -1,27 +1,41 @@
 # Wheel
 
-Setup Ceramic and ComposeDB in a quick and easy fashion
+## Quick Start
 
 ![](./gifs/install.gif)
 
-![](./gifs/running.gif)
+Run the following to install wheel
 
-![](./gifs/install_ceramic.gif)
+    curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/ceramicstudio/wheel/main/wheel.sh | bash
+    
+## What is Wheel
 
-![](./gifs/composedb.gif)
+Setup Ceramic and ComposeDB in a quick and easy fashion
 
 Wheel can handle "default" behavior for Ceramic and ComposeDB based on your network, or you can customize your 
 configuration by stepping through some or all the available configuration options.
 
+![](./gifs/running.gif)
+
+Wheel will run setup and run Ceramic
+
+![](./gifs/install_ceramic.gif)
+
+and setup ComposeDB using this configuration
+
+![](./gifs/composedb.gif)
+
 Wheel even provides a quiet mode, for those that know exactly what they want, and don't need to interact with Wheel option
 by option.
 
-## Getting Started
+## Installing Wheel
 Run the following to install wheel
 
     curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/ceramicstudio/wheel/main/wheel.sh | bash
 
 Please follow the instructions that follow.
+
+## Running Wheel in Quiet Mode
 
 If you don't want to step through prompts at all, you can use wheel in "quiet" mode, which will default to clay
 
