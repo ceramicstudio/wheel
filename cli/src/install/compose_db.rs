@@ -43,6 +43,11 @@ pub async fn install_compose_db(
         .join(".bin")
         .join("composedb");
 
+    let symlink = working_directory.join("composedb");
+    if !tokio::fs::try_exists(&symlink).await? {
+        tokio::fs::symlink(working_directory.join(&composedb_path), symlink).await?;
+    }
+
     log::info!(
         r#"ComposeDB cli now available. 
         
@@ -52,17 +57,15 @@ To properly use composedb, you will need to update your environment
 
 You can then run composedb with
 
-    node {}
+    node composedb
 
 To run the graphiql server use
 
-    node {} graphql:server --graphiql --port 5005 <path to compiled composite>
+    node composedb graphql:server --graphiql --port 5005 <path to compiled composite>
     
 For more information on composedb and commands to run, see https://composedb.js.org/docs/0.4.x/first-composite
         "#,
         working_directory.display(),
-        composedb_path.display(),
-        composedb_path.display(),
     );
 
     Ok(())

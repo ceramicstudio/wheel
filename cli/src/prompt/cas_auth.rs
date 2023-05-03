@@ -25,7 +25,7 @@ enum CasSelect {
 impl std::fmt::Display for CasSelect {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Authenticate => write!(f, "Authenticate"),
+            Self::Authenticate => write!(f, "Email Based Authentication"),
             Self::FromPrivateKey => write!(f, "Use Private Key"),
             Self::Ip => write!(f, "IP Based Authentication (Deprecated)"),
         }

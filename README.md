@@ -2,13 +2,13 @@
 
 Setup Ceramic and ComposeDB in a quick and easy fashion
 
-![](https://github.com/ceramicstudio/wheel/gifs/install.gif)
+![](./gifs/install.gif)
 
-![](https://github.com/ceramicstudio/wheel/gifs/running.gif)
+![](./gifs/running.gif)
 
-![](https://github.com/ceramicstudio/wheel/gifs/install_ceramic.gif)
+![](./gifs/install_ceramic.gif)
 
-![](https://github.com/ceramicstudio/wheel/gifs/composedb.gif)
+![](./gifs/composedb.gif)
 
 Wheel can handle "default" behavior for Ceramic and ComposeDB based on your network, or you can customize your 
 configuration by stepping through some or all the available configuration options.

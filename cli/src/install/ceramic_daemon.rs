@@ -52,6 +52,10 @@ pub async fn install_ceramic_daemon(
     };
 
     let ceramic_path = PathBuf::from("node_modules").join(".bin").join("ceramic");
+    let symlink = working_directory.join("ceramic");
+    if !tokio::fs::try_exists(&symlink).await? {
+        tokio::fs::symlink(working_directory.join(&ceramic_path), symlink).await?;
+    }
 
     let ret = if ans {
         log::info!(
@@ -63,7 +67,7 @@ pub async fn install_ceramic_daemon(
 
         let mut process = cmd
             .args(&[
-                ceramic_path.to_string_lossy().as_ref(),
+                "ceramic",
                 "daemon",
                 "--config",
                 &ceramic_config_file.display().to_string(),
@@ -98,10 +102,9 @@ pub async fn install_ceramic_daemon(
 When you would like to run ceramic please run 
 
     cd {}
-    node {} daemon --config {}
+    node ceramic daemon --config {}
         "#,
         working_directory.display(),
-        ceramic_path.display(),
         ceramic_config_file.display()
     );
 

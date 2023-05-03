@@ -46,28 +46,35 @@ then recreate following https://github.com/3box/wheel#setting-up-postgres"#,
         let p = PathBuf::from(path);
         log::info!("Verifying sqlite path exists at {}", p.display());
         if tokio::fs::try_exists(p).await? {
-            if let Ok(mut c) = sqlx::sqlite::SqliteConnection::connect(&cfg.indexing.db).await {
-                if let Some(res) = c.fetch_optional(SELECT_NETWORK_OPTION).await? {
-                    let db_network: String = res.get(VALUE_INDEX);
-                    let network = convert_network_identifier(&cfg.network.id);
-                    if network != db_network {
-                        let err = anyhow::anyhow!(
-                            r#"Network {} ({}) does not match existing network {}.
+            match sqlx::sqlite::SqliteConnection::connect(&cfg.indexing.db).await {
+                Ok(mut c) => {
+                    if let Some(res) = c.fetch_optional(SELECT_NETWORK_OPTION).await? {
+                        let db_network: String = res.get(VALUE_INDEX);
+                        let network = convert_network_identifier(&cfg.network.id);
+                        if network != db_network {
+                            let err = anyhow::anyhow!(
+                                r#"Network {} ({}) does not match existing network {}.
 
 If you want to switch networks, please follow the removal instructions at
 https://blog.ceramic.network/composedb-beta-update-model-versioning-release/."#,
-                            cfg.network.id,
-                            network,
-                            db_network
-                        );
-                        return Err(err);
+                                cfg.network.id,
+                                network,
+                                db_network
+                            );
+                            return Err(err);
+                        }
                     }
                 }
+                Err(e) => {
+                    let err = anyhow::anyhow!(
+                        "Cannot connect sqlite at path {}, aborting startup: {}",
+                        path,
+                        e
+                    );
+                    log::error!("{}", err.to_string());
+                    return Err(err);
+                }
             }
-        } else {
-            let err = anyhow::anyhow!("Cannot connect sqlite at path {}, aborting startup", path);
-            log::error!("{}", err.to_string());
-            return Err(err);
         }
     }
     Ok(())

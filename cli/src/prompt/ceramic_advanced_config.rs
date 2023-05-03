@@ -1,8 +1,25 @@
 use ceramic_config::*;
 use inquire::*;
+use std::fmt::Formatter;
 use std::path::{Path, PathBuf};
 
 use crate::did::DidAndPrivateKey;
+
+enum ConfigSelect {
+    Skip,
+    Basic,
+    Advanced,
+}
+
+impl std::fmt::Display for ConfigSelect {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Skip => write!(f, "Skip: Use default configuration based on network"),
+            Self::Basic => write!(f, "Basic: Configure limited settings based on network"),
+            Self::Advanced => write!(f, "Advanced: Configure all ceramic options"),
+        }
+    }
+}
 
 pub async fn prompt<'a, 'b, Fn, Fut, P>(
     working_directory: P,
@@ -15,13 +32,26 @@ where
     Fut: std::future::Future<Output = anyhow::Result<()>>,
     Fn: FnMut(P, &'a mut Config, &'b DidAndPrivateKey) -> Fut,
 {
-    let ans = Confirm::new(&format!("Step through ceramic configuration?"))
-        .with_default(false)
-        .with_help_message("Step through interactive prompts to configure ceramic node")
-        .prompt()?;
+    let ans = Select::new(
+        "Configure Ceramic",
+        vec![
+            ConfigSelect::Skip,
+            ConfigSelect::Basic,
+            ConfigSelect::Advanced,
+        ],
+    )
+    .prompt()?;
 
-    if ans {
-        func(working_directory, cfg, admin_did).await?;
+    match ans {
+        ConfigSelect::Skip => {
+            log::info!("Using default configuration for {}", cfg.network.id);
+        }
+        ConfigSelect::Basic => {
+            func(working_directory, cfg, admin_did).await?;
+        }
+        ConfigSelect::Advanced => {
+            configure(working_directory, cfg, admin_did).await?;
+        }
     }
 
     Ok(())
@@ -149,30 +179,84 @@ pub fn configure_node(cfg: &mut Config) -> anyhow::Result<()> {
     Ok(())
 }
 
+enum IndexingSelect {
+    Sqlite,
+    Postgres,
+}
+
+impl std::fmt::Display for IndexingSelect {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Sqlite => write!(f, "Sqlite (Cannot be used on Mainnet)"),
+            Self::Postgres => write!(f, "Postgres"),
+        }
+    }
+}
+
+enum SqliteSelect {
+    CurrentDirectory,
+    CustomDirectory,
+}
+
+impl std::fmt::Display for SqliteSelect {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::CurrentDirectory => write!(f, "Current Directory"),
+            Self::CustomDirectory => write!(f, "Custom Directory"),
+        }
+    }
+}
+
 pub fn configure_indexing<P: AsRef<Path>>(
     working_directory: P,
     cfg: &mut Config,
 ) -> anyhow::Result<()> {
-    if let Some(db) =
-        Text::new("Database Connection String? (Escape to use sqlite with project directory)")
-            .with_help_message(
-                r#"Indexing database connection string. Examples:
-    postgres://user:password@localhost:5432/ceramic
-    sqlite:///directory-for-ceramic
-Sqlite is not allowed for production ceramic instances.
-"#,
-            )
-            .with_default(&cfg.indexing.db)
-            .prompt_skippable()?
-    {
-        cfg.indexing.db = db;
+    let default = if cfg.indexing.db.contains("sqlite") {
+        0
     } else {
-        cfg.indexing.db = format!("sqlite://{}", working_directory.as_ref().display());
-    }
-
-    if !cfg.allows_sqlite() {
-        if cfg.indexing.db.starts_with("sqlite") {
-            anyhow::bail!("sqlite not allowed in environment {}", cfg.network.id);
+        1
+    };
+    match Select::new(
+        "Indexing Database",
+        vec![IndexingSelect::Sqlite, IndexingSelect::Postgres],
+    )
+    .with_starting_cursor(default)
+    .prompt()?
+    {
+        IndexingSelect::Sqlite => {
+            if !cfg.allows_sqlite() {
+                anyhow::bail!("sqlite not allowed in environment {}", cfg.network.id);
+            }
+            let ans = Select::new(
+                "Sqlite Database Location",
+                vec![
+                    SqliteSelect::CurrentDirectory,
+                    SqliteSelect::CustomDirectory,
+                ],
+            )
+            .with_starting_cursor(default)
+            .prompt()?;
+            match ans {
+                SqliteSelect::CurrentDirectory => {
+                    cfg.indexing.db = format!(
+                        "sqlite://{}/ceramic.db",
+                        working_directory.as_ref().display()
+                    );
+                }
+                SqliteSelect::CustomDirectory => {
+                    let location = Text::new("Sqlite Database Location")
+                        .with_help_message("Example: sqlite:///directory-for-ceramic/ceramic.db")
+                        .with_default(&cfg.indexing.db)
+                        .prompt()?;
+                    cfg.indexing.db = format!("sqlite://{}", location);
+                }
+            }
+        }
+        IndexingSelect::Postgres => {
+            cfg.indexing.db = Text::new("Postgres Database Connection String")
+                .with_help_message("Example: postgres://user:password@localhost:5432/ceramic")
+                .with_default(&cfg.indexing.db)
+                .prompt()?;
         }
     }
 

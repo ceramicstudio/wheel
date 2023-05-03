@@ -30,14 +30,10 @@ pub async fn interactive(
             NetworkIdentifier::Mainnet,
         ],
     )
-    .with_help_message("InMemory nodes will not anchor")
+    .with_help_message(r#"Corresponds with network type, will be used to configure defaults when not using advanced configuration. InMemory nodes will not anchor"#)
     .prompt()?;
 
     log::info!("Starting configuration for {} project", network_identifier);
-
-    let advanced = Confirm::new("Advanced configuration?")
-        .with_default(false)
-        .prompt()?;
 
     let project = prompt::project::configure_project(&working_directory).await?;
 
@@ -70,25 +66,21 @@ pub async fn interactive(
 
     cfg.http_api.admin_dids.push(doc.did().to_string());
 
-    if advanced {
-        prompt::prompt(&project.path, &mut cfg, &doc, prompt::advanced_config).await?;
-    } else {
-        match network_identifier {
-            NetworkIdentifier::InMemory => {
-                prompt::prompt(&project.path, &mut cfg, &doc, prompt::local_config).await?;
-            }
-            NetworkIdentifier::Local => {
-                prompt::prompt(&project.path, &mut cfg, &doc, prompt::local_config).await?;
-            }
-            NetworkIdentifier::Dev => {
-                prompt::prompt(&project.path, &mut cfg, &doc, prompt::remote_config).await?;
-            }
-            NetworkIdentifier::Clay => {
-                prompt::prompt(&project.path, &mut cfg, &doc, prompt::remote_config).await?;
-            }
-            NetworkIdentifier::Mainnet => {
-                prompt::prompt(&project.path, &mut cfg, &doc, prompt::remote_config).await?;
-            }
+    match network_identifier {
+        NetworkIdentifier::InMemory => {
+            prompt::prompt(&project.path, &mut cfg, &doc, prompt::local_config).await?;
+        }
+        NetworkIdentifier::Local => {
+            prompt::prompt(&project.path, &mut cfg, &doc, prompt::local_config).await?;
+        }
+        NetworkIdentifier::Dev => {
+            prompt::prompt(&project.path, &mut cfg, &doc, prompt::remote_config).await?;
+        }
+        NetworkIdentifier::Clay => {
+            prompt::prompt(&project.path, &mut cfg, &doc, prompt::remote_config).await?;
+        }
+        NetworkIdentifier::Mainnet => {
+            prompt::prompt(&project.path, &mut cfg, &doc, prompt::remote_config).await?;
         }
     }
 
@@ -176,9 +168,12 @@ async fn finish_setup(
     let mut f = tokio::fs::OpenOptions::new()
         .write(true)
         .create(true)
+        .append(false)
+        .truncate(true)
         .open(&cfg_file_path)
         .await?;
-    f.write_all(serde_json::to_string(&cfg)?.as_bytes()).await?;
+    f.write_all(serde_json::to_string_pretty(&cfg)?.as_bytes())
+        .await?;
     f.flush().await?;
 
     let daemon_config_file = write_daemon_config(&project.path, &cfg).await?;
@@ -218,7 +213,7 @@ async fn write_daemon_config(
         .append(false)
         .open(&cfg_file_path)
         .await?;
-    f.write_all(serde_json::to_string(&daemon_config)?.as_bytes())
+    f.write_all(serde_json::to_string_pretty(&daemon_config)?.as_bytes())
         .await?;
     f.flush().await?;
     Ok(cfg_file_path)
