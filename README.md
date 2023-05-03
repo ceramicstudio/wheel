@@ -8,6 +8,8 @@ Run the following to install wheel
 
     curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/ceramicstudio/wheel/main/wheel.sh | bash
     
+Please follow the instructions that follow.
+
 ## What is Wheel
 
 Setup Ceramic and ComposeDB in a quick and easy fashion
@@ -27,13 +29,6 @@ and setup ComposeDB using this configuration
 
 Wheel even provides a quiet mode, for those that know exactly what they want, and don't need to interact with Wheel option
 by option.
-
-## Installing Wheel
-Run the following to install wheel
-
-    curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/ceramicstudio/wheel/main/wheel.sh | bash
-
-Please follow the instructions that follow.
 
 ## Running Wheel in Quiet Mode
 
