@@ -43,7 +43,7 @@ All networks other than InMemory require CAS authorization. Wheel will walk you 
 for more information see https://composedb.js.org/docs/0.4.x/guides/composedb-server/access-mainnet#step-1-start-your-node-and-copy-your-key-did.
 
 ## Setting up Postgres
-For production ceramic nodes, postgres is required. Visit https://www.postgresql.org/download/ to install postgres.
+If using Postgres, it will need to be setup. Visit https://www.postgresql.org/download/ to install postgres.
 
 You will then need to configure postgres for ceramic.
 
@@ -56,3 +56,5 @@ You will then need to configure postgres for ceramic.
     GRANT ALL PRIVILEGES ON DATABASE "ceramic" to ceramic;
 
 The connection string you provide to wheel will then be `postgres://ceramic:password@127.0.0.1:5432/ceramic`
+
+*Note*: For production ceramic nodes, only postgres is supported. 
