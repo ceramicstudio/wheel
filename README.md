@@ -2,7 +2,7 @@
 
 Setup Ceramic and ComposeDB in a quick and easy fashion
 
-![](./gifs/install.gif)
+<img src="./gifs/install.gif" alt= “” width="640" height="480">
 
 ![](./gifs/running.gif)
 
