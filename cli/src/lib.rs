@@ -58,11 +58,17 @@ pub async fn interactive(
 
     let cfg_file_path = project.path.join("ceramic.json");
     let cfg_file_path = Text::new("Wheel config file location")
-        .with_default(cfg_file_path.to_string_lossy().as_ref())
+        .with_default(&cfg_file_path.display().to_string())
         .prompt()?;
     let cfg_file_path = PathBuf::from(cfg_file_path);
-    let mut cfg =
-        get_or_create_config(&project, &network_identifier, cas_auth, &cfg_file_path).await?;
+    let mut cfg = get_or_create_config(
+        &project,
+        &network_identifier,
+        cas_auth,
+        &project.path,
+        &cfg_file_path,
+    )
+    .await?;
 
     cfg.http_api.admin_dids.push(doc.did().to_string());
 
@@ -125,20 +131,15 @@ pub async fn quiet(opts: QuietOptions) -> anyhow::Result<Option<JoinHandle<()>>>
         CasAuth { url, pk: Some(pk) }
     });
     let cfg_file_path = project.path.join("ceramic.json");
-    let mut cfg =
-        get_or_create_config(&project, &opts.network_identifier, cas_auth, &cfg_file_path).await?;
+    let mut cfg = get_or_create_config(
+        &project,
+        &opts.network_identifier,
+        cas_auth,
+        &project.path,
+        &cfg_file_path,
+    )
+    .await?;
 
-    if let NetworkIdentifier::InMemory | NetworkIdentifier::Local = opts.network_identifier {
-        let abs_path = project.path.canonicalize()?.join("ceramic-indexing");
-        if !abs_path.exists() {
-            tokio::fs::create_dir_all(&abs_path).await?;
-        }
-        let sql_path = abs_path
-            .join("ceramic.sqlite")
-            .to_string_lossy()
-            .to_string();
-        cfg.indexing.db = format!("sqlite://{}", sql_path);
-    }
     cfg.http_api.admin_dids.push(opts.did.did().to_string());
 
     finish_setup(
@@ -223,6 +224,7 @@ async fn get_or_create_config(
     project: &Project,
     network_identifier: &NetworkIdentifier,
     cas_auth: Option<CasAuth>,
+    working_directory: impl AsRef<Path>,
     cfg_file_path: impl AsRef<Path>,
 ) -> anyhow::Result<Config> {
     let cfg = if cfg_file_path.as_ref().exists() {
@@ -236,8 +238,20 @@ async fn get_or_create_config(
         cfg
     } else {
         let mut cfg = Config::new(network_identifier, &project.name, cas_auth);
-        if network_identifier == &NetworkIdentifier::InMemory {
-            cfg.indexing.db = format!("sqlite://{}/ceramic.db", project.path.display());
+        if let NetworkIdentifier::InMemory
+        | NetworkIdentifier::Local
+        | NetworkIdentifier::Dev
+        | NetworkIdentifier::Clay = cfg.network.id
+        {
+            let db_path = working_directory
+                .as_ref()
+                .canonicalize()?
+                .join("ceramic-indexing");
+            if !db_path.exists() {
+                tokio::fs::create_dir_all(&db_path).await?;
+            }
+            let db_path = db_path.join("ceramic.db");
+            cfg.indexing.db = format!("sqlite://{}", db_path.display());
         }
         cfg
     };
