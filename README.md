@@ -19,11 +19,7 @@ configuration by stepping through some or all the available configuration option
 
 ![](./gifs/running.gif)
 
-Wheel will run setup and run Ceramic
-
-![](./gifs/install_ceramic.gif)
-
-and setup ComposeDB using this configuration
+Wheel can also install Ceramic and run it, as well as install ComposeDB. Both will use the configuration you've defined.
 
 ![](./gifs/composedb.gif)
 
