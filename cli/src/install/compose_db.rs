@@ -26,11 +26,12 @@ pub async fn install_compose_db(
     }
 
     let hostname = format!("http://{}:{}", cfg.http_api.hostname, cfg.http_api.port);
+    let env_file = working_directory.join("composedb.env");
     let mut f = tokio::fs::OpenOptions::new()
         .write(true)
         .create(true)
         .append(false)
-        .open(working_directory.join("composedb.env"))
+        .open(&env_file)
         .await?;
 
     f.write_all(format!("export DID_PRIVATE_KEY={}", admin_did.pk()).as_bytes())
@@ -38,34 +39,30 @@ pub async fn install_compose_db(
     f.write_all(format!("\nexport CERAMIC_URL={}", hostname).as_bytes())
         .await?;
     f.flush().await?;
-    let composedb_path = working_directory
-        .join("node_modules")
-        .join(".bin")
-        .join("composedb");
 
-    let symlink = working_directory.join("composedb");
-    if !tokio::fs::try_exists(&symlink).await? {
-        tokio::fs::symlink(working_directory.join(&composedb_path), symlink).await?;
-    }
+    crate::install::create_invoke_script(
+        working_directory
+            .join("node_modules")
+            .join(".bin")
+            .join("composedb"),
+        working_directory.join("composedb"),
+        &format!("source {}", env_file.display()),
+    )
+    .await?;
 
     log::info!(
-        r#"ComposeDB cli now available. 
-        
-To properly use composedb, you will need to update your environment
+        r#"ComposeDB cli now available.
 
-    source {}/composedb.env
+You can run composedb with
 
-You can then run composedb with
-
-    node composedb
+    ./composedb
 
 To run the graphiql server use
 
-    node composedb graphql:server --graphiql --port 5005 <path to compiled composite>
+    ./composedb graphql:server --graphiql --port 5005 <path to compiled composite>
     
 For more information on composedb and commands to run, see https://composedb.js.org/docs/0.4.x/first-composite
-        "#,
-        working_directory.display(),
+        "#
     );
 
     Ok(())

@@ -22,7 +22,7 @@ pub async fn verify(cfg: &Config) -> anyhow::Result<()> {
                 return Err(e.into());
             }
             Ok(mut c) => {
-                if let Some(res) = c.fetch_optional(SELECT_NETWORK_OPTION).await? {
+                if let Ok(Some(res)) = c.fetch_optional(SELECT_NETWORK_OPTION).await {
                     let db_network: String = res.get(VALUE_INDEX);
                     let network = convert_network_identifier(&cfg.network.id);
                     if network != db_network {
@@ -48,7 +48,7 @@ then recreate following https://github.com/3box/wheel#setting-up-postgres"#,
         if tokio::fs::try_exists(p).await? {
             match sqlx::sqlite::SqliteConnection::connect(&cfg.indexing.db).await {
                 Ok(mut c) => {
-                    if let Some(res) = c.fetch_optional(SELECT_NETWORK_OPTION).await? {
+                    if let Ok(Some(res)) = c.fetch_optional(SELECT_NETWORK_OPTION).await {
                         let db_network: String = res.get(VALUE_INDEX);
                         let network = convert_network_identifier(&cfg.network.id);
                         if network != db_network {

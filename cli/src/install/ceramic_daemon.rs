@@ -1,5 +1,5 @@
 use inquire::*;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Stdio;
 use tokio::task::JoinHandle;
 
@@ -51,19 +51,20 @@ pub async fn install_ceramic_daemon(
             .prompt()?
     };
 
-    let ceramic_path = PathBuf::from("node_modules").join(".bin").join("ceramic");
-    let symlink = working_directory.join("ceramic");
-    if !tokio::fs::try_exists(&symlink).await? {
-        tokio::fs::symlink(working_directory.join(&ceramic_path), symlink).await?;
-    }
+    let ceramic_path = working_directory
+        .join("node_modules")
+        .join(".bin")
+        .join("ceramic");
+    crate::install::create_invoke_script(&ceramic_path, working_directory.join("ceramic"), "")
+        .await?;
 
     let ret = if ans {
         log::info!(
             "Starting ceramic as a daemon, using config file {} and binary {}",
             ceramic_config_file.display(),
-            working_directory.join(&ceramic_path).display()
+            ceramic_path.display()
         );
-        let mut cmd = Command::new("node");
+        let mut cmd = Command::new("sh");
 
         let mut process = cmd
             .args(&[
@@ -101,11 +102,9 @@ pub async fn install_ceramic_daemon(
         
 When you would like to run ceramic please run 
 
-    cd {}
-    node ceramic daemon --config {}
+    ./ceramic daemon --config {}
         "#,
         working_directory.display(),
-        ceramic_config_file.display()
     );
 
     Ok(ret)

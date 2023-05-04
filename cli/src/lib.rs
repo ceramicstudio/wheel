@@ -30,7 +30,7 @@ pub async fn interactive(
             NetworkIdentifier::Mainnet,
         ],
     )
-    .with_help_message(r#"Corresponds with network type, will be used to configure defaults when not using advanced configuration. InMemory nodes will not anchor"#)
+    .with_help_message(r#"Corresponds with network type, will be used to configure defaults when not using advanced configuration. InMemory is recommended when trying out Ceramic and ComposeDB, but nodes will not anchor"#)
     .prompt()?;
 
     log::info!("Starting configuration for {} project", network_identifier);
