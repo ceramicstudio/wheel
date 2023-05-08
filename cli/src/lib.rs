@@ -24,7 +24,6 @@ pub async fn interactive(
         "Project Type",
         vec![
             NetworkIdentifier::InMemory,
-            NetworkIdentifier::Local,
             NetworkIdentifier::Dev,
             NetworkIdentifier::Clay,
             NetworkIdentifier::Mainnet,
@@ -38,11 +37,13 @@ pub async fn interactive(
     let project = prompt::project::configure_project(&working_directory).await?;
 
     let with_ceramic = Confirm::new("Include Ceramic?")
+        .with_help_message("Installs Ceramic and allows Ceramic to be run as a daemon")
         .with_default(true)
         .prompt()?;
 
     let with_composedb = if with_ceramic {
         Confirm::new("Include ComposeDB?")
+            .with_help_message("Installs ComposeDB and allows ComposeDB cli to be run")
             .with_default(true)
             .prompt()?
     } else {
@@ -74,19 +75,19 @@ pub async fn interactive(
 
     match network_identifier {
         NetworkIdentifier::InMemory => {
-            prompt::prompt(&project.path, &mut cfg, &doc, prompt::local_config).await?;
+            prompt::prompt(&project.path, &mut cfg, &doc).await?;
         }
         NetworkIdentifier::Local => {
-            prompt::prompt(&project.path, &mut cfg, &doc, prompt::local_config).await?;
+            // TODO: prompt for local config
         }
         NetworkIdentifier::Dev => {
-            prompt::prompt(&project.path, &mut cfg, &doc, prompt::remote_config).await?;
+            prompt::prompt(&project.path, &mut cfg, &doc).await?;
         }
         NetworkIdentifier::Clay => {
-            prompt::prompt(&project.path, &mut cfg, &doc, prompt::remote_config).await?;
+            prompt::prompt(&project.path, &mut cfg, &doc).await?;
         }
         NetworkIdentifier::Mainnet => {
-            prompt::prompt(&project.path, &mut cfg, &doc, prompt::remote_config).await?;
+            prompt::prompt(&project.path, &mut cfg, &doc).await?;
         }
     }
 
@@ -197,6 +198,13 @@ async fn finish_setup(
         None
     };
 
+    log::info!(
+        "Project {} created at {} for network {}",
+        project.name,
+        project.path.display(),
+        cfg.network.id
+    );
+
     Ok(opt_child)
 }
 
@@ -227,7 +235,7 @@ async fn get_or_create_config(
     working_directory: impl AsRef<Path>,
     cfg_file_path: impl AsRef<Path>,
 ) -> anyhow::Result<Config> {
-    let cfg = if cfg_file_path.as_ref().exists() {
+    let cfg = if tokio::fs::try_exists(cfg_file_path.as_ref()).await? {
         log::info!(
             "Initializing config with previous information from {}",
             cfg_file_path.as_ref().display()

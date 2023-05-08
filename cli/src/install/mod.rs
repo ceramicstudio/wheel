@@ -1,6 +1,7 @@
 pub mod ceramic_app_template;
 pub mod ceramic_daemon;
 pub mod compose_db;
+mod npm;
 mod verify_db;
 
 use std::io::BufRead;

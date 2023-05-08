@@ -176,10 +176,20 @@ pub struct Indexing {
 impl Default for Indexing {
     fn default() -> Self {
         Self {
-            db: "postgres://ceramic:password@localhost:5432/ceramic".to_string(),
+            db: Indexing::postgres_default().to_string(),
             allow_queries_before_historical_sync: true,
             enable_historical_sync: false,
         }
+    }
+}
+
+impl Indexing {
+    pub fn postgres_default() -> &'static str {
+        "postgres://ceramic:password@localhost:5432/ceramic"
+    }
+
+    pub fn is_sqlite(&self) -> bool {
+        self.db.starts_with("sqlite")
     }
 }
 

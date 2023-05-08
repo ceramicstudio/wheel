@@ -2,19 +2,19 @@
 
 if ! command -v curl &> /dev/null
 then
-    echo "curl was not found, please install curl"
+    echo "curl was not found, please install curl https://curl.se/"
     exit
 fi
 
 if ! command -v jq &> /dev/null
 then
-    echo "jq was not found, please install jq"
+    echo "jq was not found, please install jq https://stedolan.github.io/jq/download/"
     exit
 fi
 
 if ! command -v npx &> /dev/null
 then
-    echo "npx was not found, please install node.js"
+    echo "npx was not found, please install node.js https://nodejs.org/en/download"
     exit
 fi
 
@@ -43,4 +43,4 @@ curl -LJ0 --output $OUTPUT_FILE $DOWNLOAD_URL
 tar -xvf $OUTPUT_FILE
 rm $OUTPUT_FILE
 
-echo "Wheel is now ready to go, run ./wheel to setup ceramic and ComposeDB"
+echo "Wheel is now ready to go, run ./wheel to setup Ceramic and ComposeDB"

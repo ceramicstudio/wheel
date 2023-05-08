@@ -15,7 +15,14 @@ pub async fn configure_project(working_directory: impl AsRef<Path>) -> anyhow::R
         .with_default(project_path.to_string_lossy().as_ref())
         .prompt()?;
     let project_path = PathBuf::from(project_path);
-    if !project_path.exists() {
+    if tokio::fs::try_exists(&project_path).await? {
+        if !Confirm::new("You are setting up your project in a non-empty directory. Continue?")
+            .with_default(false)
+            .prompt()?
+        {
+            anyhow::bail!("Aborting project setup");
+        }
+    } else {
         log::info!(
             "Project directory {} does not exist, creating it",
             project_path.display()

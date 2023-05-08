@@ -1,8 +1,9 @@
+use ceramic_config::convert_network_identifier;
 use std::path::Path;
 use tokio::io::AsyncWriteExt;
-use tokio::process::Command;
 
 use crate::did::DidAndPrivateKey;
+use crate::install::npm::npm_install;
 
 pub async fn install_compose_db(
     cfg: &ceramic_config::Config,
@@ -15,15 +16,7 @@ pub async fn install_compose_db(
     if let Some(v) = version.as_ref() {
         program.push_str(&format!("@{}", v.to_string()));
     }
-    let status = Command::new("npm")
-        .args(&["install", &program])
-        .current_dir(working_directory)
-        .status()
-        .await?;
-
-    if !status.success() {
-        anyhow::bail!("Failed to install composedb cli");
-    }
+    npm_install(working_directory, &program).await?;
 
     let hostname = format!("http://{}:{}", cfg.http_api.hostname, cfg.http_api.port);
     let env_file = working_directory.join("composedb.env");
@@ -57,12 +50,19 @@ You can run composedb with
 
     ./composedb
 
+To list available models for usage, use
+
+    ./composedb model:list --network={} --table
+
 To run the graphiql server use
 
     ./composedb graphql:server --graphiql --port 5005 <path to compiled composite>
     
 For more information on composedb and commands to run, see https://composedb.js.org/docs/0.4.x/first-composite
-        "#
+
+You can also take a look at https://github.com/ceramicstudio/EthDenver2023Demo for more ideas on using ComposeDB.
+        "#,
+        convert_network_identifier(&cfg.network.id)
     );
 
     Ok(())

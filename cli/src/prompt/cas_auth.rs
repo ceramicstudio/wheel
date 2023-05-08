@@ -18,7 +18,6 @@ enum CasResponse {
 
 enum CasSelect {
     Authenticate,
-    FromPrivateKey,
     Ip,
 }
 
@@ -26,7 +25,6 @@ impl std::fmt::Display for CasSelect {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Authenticate => write!(f, "Email Based Authentication"),
-            Self::FromPrivateKey => write!(f, "Use Private Key"),
             Self::Ip => write!(f, "IP Based Authentication (Deprecated)"),
         }
     }
@@ -50,14 +48,14 @@ pub async fn prompt(
             "CAS Authentication",
             vec![
                 CasSelect::Authenticate,
-                CasSelect::FromPrivateKey,
                 CasSelect::Ip,
             ],
-        )
+        ).with_help_message("For more information on CAS Authentication see https://composedb.js.org/docs/0.4.x/guides/composedb-server/access-mainnet#step-1-start-your-node-and-copy-your-key-did")
         .prompt()?
         {
             CasSelect::Authenticate => {
                 let input_email = Text::new("Email address for CAS Authentication").prompt()?;
+                log::info!("Sending OTP to {}, please check your email", input_email);
                 reqwest::Client::new()
                     .post(format!("{}/api/v0/auth/verification", url))
                     .json(&serde_json::json!({
@@ -65,7 +63,9 @@ pub async fn prompt(
                     }))
                     .send()
                     .await?;
-                let code = Text::new("OTP Code from email").prompt()?;
+                let code = Text::new("OTP Code from email")
+                    .with_help_message("Please check your email for the OTP code")
+                    .prompt()?;
                 let input_did = doc.did();
                 let bytes = reqwest::Client::new()
                     .post(format!("{}/api/v0/auth/did", url))
@@ -93,6 +93,7 @@ pub async fn prompt(
                             if resp.email != input_email && resp.did != input_did {
                                 anyhow::bail!("CAS response did not match email and did");
                             }
+                            log::info!("CAS authentication successful");
                             Some(doc.cas_auth())
                         } else {
                             anyhow::bail!(
@@ -103,7 +104,6 @@ pub async fn prompt(
                     }
                 }
             }
-            CasSelect::FromPrivateKey => Some(doc.cas_auth()),
             CasSelect::Ip => None,
         };
         Ok(Some(CasAuth { url: url, pk: pk }))

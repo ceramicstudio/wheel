@@ -6,51 +6,39 @@ use std::path::{Path, PathBuf};
 use crate::did::DidAndPrivateKey;
 
 enum ConfigSelect {
-    Skip,
-    Basic,
+    Defaults,
     Advanced,
 }
 
 impl std::fmt::Display for ConfigSelect {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Skip => write!(f, "Skip: Use default configuration based on network"),
-            Self::Basic => write!(f, "Basic: Configure limited settings based on network"),
-            Self::Advanced => write!(f, "Advanced: Configure all ceramic options"),
+            Self::Defaults => write!(f, "Defaults: Use default configuration based on network"),
+            Self::Advanced => write!(
+                f,
+                "Advanced: Configure all ceramic options based on network"
+            ),
         }
     }
 }
 
-pub async fn prompt<'a, 'b, Fn, Fut, P>(
-    working_directory: P,
-    cfg: &'a mut Config,
-    admin_did: &'b DidAndPrivateKey,
-    mut func: Fn,
-) -> anyhow::Result<()>
-where
-    P: AsRef<Path>,
-    Fut: std::future::Future<Output = anyhow::Result<()>>,
-    Fn: FnMut(P, &'a mut Config, &'b DidAndPrivateKey) -> Fut,
-{
+pub async fn prompt(
+    working_directory: impl AsRef<Path>,
+    cfg: &mut Config,
+    admin_did: &DidAndPrivateKey,
+) -> anyhow::Result<()> {
     let ans = Select::new(
         "Configure Ceramic",
-        vec![
-            ConfigSelect::Skip,
-            ConfigSelect::Basic,
-            ConfigSelect::Advanced,
-        ],
+        vec![ConfigSelect::Defaults, ConfigSelect::Advanced],
     )
     .prompt()?;
 
     match ans {
-        ConfigSelect::Skip => {
+        ConfigSelect::Defaults => {
             log::info!("Using default configuration for {}", cfg.network.id);
         }
-        ConfigSelect::Basic => {
-            func(working_directory, cfg, admin_did).await?;
-        }
         ConfigSelect::Advanced => {
-            configure(working_directory, cfg, admin_did).await?;
+            configure(cfg, admin_did, working_directory).await?;
         }
     }
 
@@ -84,13 +72,16 @@ enum StateStoreSelect {
 impl std::fmt::Display for StateStoreSelect {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::S3 => write!(f, "S3"),
+            Self::S3 => write!(f, "S3 (Bucket must already be setup in AWS)"),
             Self::Local => write!(f, "Local"),
         }
     }
 }
 
-pub async fn configure_state_store(cfg: &mut Config) -> anyhow::Result<()> {
+pub async fn configure_state_store(
+    cfg: &mut Config,
+    working_directory: impl AsRef<Path>,
+) -> anyhow::Result<()> {
     let ans = Select::new(
         "State Store (default=local)",
         vec![StateStoreSelect::Local, StateStoreSelect::S3],
@@ -98,16 +89,13 @@ pub async fn configure_state_store(cfg: &mut Config) -> anyhow::Result<()> {
     .prompt()?;
 
     let r = if let StateStoreSelect::Local = ans {
+        let default = working_directory.as_ref().join("ceramic-state");
         let location = Text::new("Directory")
-            .with_default("/opt/ceramic/data")
+            .with_default(&default.display().to_string())
             .prompt()?;
         let location = PathBuf::from(location);
-        if !location.exists() {
-            if Confirm::new("Directory does not exist, create it?").prompt()? {
-                tokio::fs::create_dir_all(location.clone()).await?;
-            } else {
-                log::warn!("Not creating directory, ceramic will fail to start");
-            }
+        if !tokio::fs::try_exists(&location).await? {
+            tokio::fs::create_dir_all(location.clone()).await?;
         }
         StateStore::LocalDirectory(location)
     } else {
@@ -140,18 +128,6 @@ pub fn configure_http_api(cfg: &mut Config, admin_did: &DidAndPrivateKey) -> any
 }
 
 fn configure_network(cfg: &mut Config) -> anyhow::Result<()> {
-    cfg.network.id = Select::new(
-        "Network type",
-        vec![
-            NetworkIdentifier::InMemory,
-            NetworkIdentifier::Local,
-            NetworkIdentifier::Dev,
-            NetworkIdentifier::Clay,
-            NetworkIdentifier::Mainnet,
-        ],
-    )
-    .with_starting_cursor(3)
-    .prompt()?;
     match cfg.network.id {
         NetworkIdentifier::Local | NetworkIdentifier::Dev => {
             let topic = cfg.network.pubsub_topic.clone().unwrap_or_else(|| {
@@ -187,7 +163,7 @@ enum IndexingSelect {
 impl std::fmt::Display for IndexingSelect {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Sqlite => write!(f, "Sqlite (Cannot be used on Mainnet)"),
+            Self::Sqlite => write!(f, "Sqlite"),
             Self::Postgres => write!(f, "Postgres"),
         }
     }
@@ -207,22 +183,26 @@ impl std::fmt::Display for SqliteSelect {
     }
 }
 
-pub fn configure_indexing<P: AsRef<Path>>(
-    working_directory: P,
+pub fn configure_indexing(
     cfg: &mut Config,
+    working_directory: impl AsRef<Path>,
 ) -> anyhow::Result<()> {
     let default = if cfg.indexing.db.contains("sqlite") {
         0
     } else {
         1
     };
-    match Select::new(
-        "Indexing Database",
-        vec![IndexingSelect::Sqlite, IndexingSelect::Postgres],
-    )
-    .with_starting_cursor(default)
-    .prompt()?
-    {
+    let indexing = if cfg.network.id == NetworkIdentifier::Mainnet {
+        IndexingSelect::Postgres
+    } else {
+        Select::new(
+            "Indexing Database",
+            vec![IndexingSelect::Sqlite, IndexingSelect::Postgres],
+        )
+        .with_starting_cursor(default)
+        .prompt()?
+    };
+    match indexing {
         IndexingSelect::Sqlite => {
             if !cfg.allows_sqlite() {
                 anyhow::bail!("sqlite not allowed in environment {}", cfg.network.id);
@@ -244,18 +224,28 @@ pub fn configure_indexing<P: AsRef<Path>>(
                     );
                 }
                 SqliteSelect::CustomDirectory => {
+                    let default = if cfg.indexing.is_sqlite() {
+                        cfg.indexing.db.clone()
+                    } else {
+                        format!("{}/ceramic.db", working_directory.as_ref().display())
+                    };
                     let location = Text::new("Sqlite Database Location")
                         .with_help_message("Example: sqlite:///directory-for-ceramic/ceramic.db")
-                        .with_default(&cfg.indexing.db)
+                        .with_default(&default)
                         .prompt()?;
                     cfg.indexing.db = format!("sqlite://{}", location);
                 }
             }
         }
         IndexingSelect::Postgres => {
+            let default = if !cfg.indexing.is_sqlite() {
+                cfg.indexing.db.clone()
+            } else {
+                Indexing::postgres_default().to_string()
+            };
             cfg.indexing.db = Text::new("Postgres Database Connection String")
-                .with_help_message("Example: postgres://user:password@localhost:5432/ceramic")
-                .with_default(&cfg.indexing.db)
+                .with_help_message(&format!("Example: {}", Indexing::postgres_default()))
+                .with_default(&default)
                 .prompt()?;
         }
     }
@@ -263,17 +253,17 @@ pub fn configure_indexing<P: AsRef<Path>>(
     Ok(())
 }
 
-pub async fn configure<'a, 'b, P: AsRef<Path>>(
-    working_directory: P,
-    cfg: &'a mut Config,
-    admin_did: &'b DidAndPrivateKey,
+pub async fn configure(
+    cfg: &mut Config,
+    admin_did: &DidAndPrivateKey,
+    working_directory: impl AsRef<Path>,
 ) -> anyhow::Result<()> {
     configure_ipfs(cfg)?;
-    configure_state_store(cfg).await?;
+    configure_state_store(cfg, working_directory.as_ref()).await?;
     configure_http_api(cfg, admin_did)?;
     configure_network(cfg)?;
     configure_node(cfg)?;
-    configure_indexing(working_directory, cfg)?;
+    configure_indexing(cfg, working_directory)?;
 
     Ok(())
 }

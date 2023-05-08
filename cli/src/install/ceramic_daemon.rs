@@ -1,12 +1,19 @@
 use inquire::*;
 use std::path::Path;
-use std::process::Stdio;
+use std::process::{ExitStatus, Stdio};
 use tokio::task::JoinHandle;
 
 use crate::install::log_async_errors;
+use crate::install::npm::npm_install;
 use crate::install::verify_db;
 use ceramic_config::Config;
+use spinners::{Spinner, Spinners};
 use tokio::process::Command;
+
+enum CeramicStatus {
+    Complete(Option<ExitStatus>),
+    HttpComplete(reqwest::Result<reqwest::Response>),
+}
 
 pub async fn install_ceramic_daemon(
     working_directory: &Path,
@@ -33,15 +40,7 @@ pub async fn install_ceramic_daemon(
     if let Some(v) = version.as_ref() {
         program.push_str(&format!("@{}", v.to_string()));
     }
-    let status = Command::new("npm")
-        .args(&["install", &program])
-        .current_dir(working_directory)
-        .status()
-        .await?;
-
-    if !status.success() {
-        anyhow::bail!("Failed to install ceramic cli");
-    }
+    npm_install(&working_directory, &program).await?;
 
     let ans = if quiet {
         true
@@ -79,9 +78,11 @@ pub async fn install_ceramic_daemon(
             .stderr(Stdio::piped())
             .spawn()?;
 
-        Some(tokio::spawn(async move {
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let opt_child = Some(tokio::spawn(async move {
             let err = process.stderr.take();
             if let Ok(exit) = process.wait().await {
+                let _ = tx.send(exit.clone()).await;
                 log::info!(
                     "Ceramic exited with code {}",
                     exit.code().unwrap_or_else(|| 0)
@@ -92,7 +93,46 @@ pub async fn install_ceramic_daemon(
                     }
                 }
             }
-        }))
+        }));
+
+        let url = format!(
+            "http://{}:{}/api/v0/node/healthcheck",
+            cfg.http_api.hostname, cfg.http_api.port
+        );
+
+        let mut sp = Spinner::new(Spinners::Dots12, "Waiting for ceramic to start".into());
+
+        loop {
+            let r = tokio::select! {
+                r = rx.recv() => {
+                    CeramicStatus::Complete(r)
+                }
+                r = reqwest::get(&url) => {
+                    CeramicStatus::HttpComplete(r)
+                }
+            };
+            match r {
+                CeramicStatus::Complete(_) => {
+                    anyhow::bail!("Ceramic failed to start");
+                }
+                CeramicStatus::HttpComplete(r) => {
+                    match r {
+                        Ok(r) => {
+                            log::debug!("Ceramic responded with status {}", r.status());
+                            if r.status().is_success() {
+                                break;
+                            }
+                        }
+                        Err(e) => {
+                            log::debug!("Ceramic failed to respond with error {}", e);
+                        }
+                    }
+                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                }
+            }
+        }
+        sp.stop();
+        opt_child
     } else {
         None
     };
@@ -103,8 +143,11 @@ pub async fn install_ceramic_daemon(
 When you would like to run ceramic please run 
 
     ./ceramic daemon --config {}
+
+from the directory {}. For more information on the Ceramic http api see https://developers.ceramic.network/build/http/api/
         "#,
-        working_directory.display(),
+        ceramic_config_file.display(),
+        working_directory.display()
     );
 
     Ok(ret)
