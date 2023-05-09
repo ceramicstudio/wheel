@@ -72,7 +72,7 @@ impl Default for HttpApi {
     fn default() -> Self {
         Self {
             hostname: std::net::Ipv4Addr::LOCALHOST.to_string(),
-            port: 7071,
+            port: 7007,
             cors_allowed_origins: vec![],
             admin_dids: vec![],
         }

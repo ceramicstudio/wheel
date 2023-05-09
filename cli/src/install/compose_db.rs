@@ -3,7 +3,7 @@ use std::path::Path;
 use tokio::io::AsyncWriteExt;
 
 use crate::did::DidAndPrivateKey;
-use crate::install::npm::npm_install;
+use crate::install::npm::npm_install_package;
 
 pub async fn install_compose_db(
     cfg: &ceramic_config::Config,
@@ -11,12 +11,11 @@ pub async fn install_compose_db(
     working_directory: &Path,
     version: &Option<semver::Version>,
 ) -> anyhow::Result<()> {
-    log::info!("Installing composedb cli");
     let mut program = "@composedb/cli".to_string();
     if let Some(v) = version.as_ref() {
         program.push_str(&format!("@{}", v.to_string()));
     }
-    npm_install(working_directory, &program).await?;
+    npm_install_package(working_directory, &program).await?;
 
     let hostname = format!("http://{}:{}", cfg.http_api.hostname, cfg.http_api.port);
     let env_file = working_directory.join("composedb.env");
@@ -44,7 +43,8 @@ pub async fn install_compose_db(
     .await?;
 
     log::info!(
-        r#"ComposeDB cli now available.
+        r#"
+ComposeDB cli now available.
 
 You can run composedb with
 

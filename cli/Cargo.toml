@@ -8,6 +8,7 @@ publish = false
 
 [dependencies]
 anyhow.workspace = true
+askama = "0.12.0"
 ceramic-config = { path = "../ceramic-config", version = "0.1.45" }
 clap = { version = "4.1.4", features = ["derive"] }
 did-method-key = "0.2"
@@ -25,6 +26,7 @@ sqlx = { version = "0.6.2", features = ["postgres", "runtime-tokio-rustls", "sql
 ssi = "0.6.0"
 tokio = { version = "1.25.0", default-features = false, features = ["fs", "macros", "process", "rt", "rt-multi-thread"] }
 which = "4.4.0"
+zip = "0.6.4"
 
 [[bin]]
 name = "wheel"

@@ -58,11 +58,16 @@ impl Into<crate::daemon::DaemonConfig> for crate::Config {
                 })
             }
         };
+        let cors = if self.http_api.cors_allowed_origins.is_empty() {
+            None
+        } else {
+            Some(self.http_api.cors_allowed_origins)
+        };
         let http = Some(crate::daemon::DaemonHttpApiConfig {
             hostname: Some(self.http_api.hostname),
             port: Some(self.http_api.port),
             admin_dids: Some(self.http_api.admin_dids),
-            cors_allowed_origins: None,
+            cors_allowed_origins: cors,
         });
         let ipfs = Some(if let crate::Ipfs::Remote(r) = self.ipfs {
             crate::daemon::DaemonIpfsConfig {

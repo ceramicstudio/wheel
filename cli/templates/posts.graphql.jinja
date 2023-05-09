@@ -1,0 +1,11 @@
+type BasicProfile @loadModel(id: "kjzl6hvfrbw6c57p6t99krxnhqbxb24suuvxfhq1hnqujfecq0fap356ai7sjk9") {
+    id: ID!
+}
+
+type Posts @createModel(accountRelation: LIST, description: "A simple Post") {
+    body: String! @string(minLength: 1, maxLength: 100)
+    edited: DateTime
+    created: DateTime!
+    profileId: StreamID! @documentReference(model:"BasicProfile")
+    profile: BasicProfile! @relationDocument(property: "profileId")
+}

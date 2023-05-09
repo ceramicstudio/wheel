@@ -1,0 +1,7 @@
+type Posts @loadModel(id: "kjzl6hvfrbw6c7gxr84vvivh8c5awz1eycoj793oixk68zw7k3z3zk5uh06fwxl") {
+  id: ID!
+}
+
+type BasicProfile @loadModel(id: "kjzl6hvfrbw6c57p6t99krxnhqbxb24suuvxfhq1hnqujfecq0fap356ai7sjk9") {
+  posts: [Posts] @relationFrom(model: "Posts", property: "profileId")
+}

@@ -4,7 +4,7 @@ use std::process::{ExitStatus, Stdio};
 use tokio::task::JoinHandle;
 
 use crate::install::log_async_errors;
-use crate::install::npm::npm_install;
+use crate::install::npm::npm_install_package;
 use crate::install::verify_db;
 use ceramic_config::Config;
 use spinners::{Spinner, Spinners};
@@ -35,12 +35,11 @@ pub async fn install_ceramic_daemon(
         }
     }
 
-    log::info!("Installing ceramic cli");
     let mut program = "@ceramicnetwork/cli".to_string();
     if let Some(v) = version.as_ref() {
         program.push_str(&format!("@{}", v.to_string()));
     }
-    npm_install(&working_directory, &program).await?;
+    npm_install_package(&working_directory, &program).await?;
 
     let ans = if quiet {
         true
@@ -100,7 +99,7 @@ pub async fn install_ceramic_daemon(
             cfg.http_api.hostname, cfg.http_api.port
         );
 
-        let mut sp = Spinner::new(Spinners::Dots12, "Waiting for ceramic to start".into());
+        let mut sp = Spinner::new(Spinners::Star2, "Waiting for ceramic to start".into());
 
         loop {
             let r = tokio::select! {
@@ -131,7 +130,7 @@ pub async fn install_ceramic_daemon(
                 }
             }
         }
-        sp.stop();
+        sp.stop_with_newline();
         opt_child
     } else {
         None
@@ -139,7 +138,6 @@ pub async fn install_ceramic_daemon(
 
     log::info!(
         r#"
-        
 When you would like to run ceramic please run 
 
     ./ceramic daemon --config {}
