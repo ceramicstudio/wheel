@@ -6,7 +6,7 @@ pub async fn npm_install(working_directory: impl AsRef<Path>, package: &str) -> 
     let ver = semver::Version::parse(String::from_utf8_lossy(&version.stdout).trim())?;
     if ver.major < 9 {
         let status = Command::new("npm")
-            .args(&["init", "--scope", package, "--yes"])
+            .args(&["init", "--yes"])
             .current_dir(working_directory.as_ref())
             .status()
             .await?;
@@ -15,6 +15,7 @@ pub async fn npm_install(working_directory: impl AsRef<Path>, package: &str) -> 
             anyhow::bail!("Failed to init npm, cannot download {}", package);
         }
     }
+
     let status = Command::new("npm")
         .args(&["install", package])
         .current_dir(working_directory)
@@ -24,5 +25,6 @@ pub async fn npm_install(working_directory: impl AsRef<Path>, package: &str) -> 
     if !status.success() {
         anyhow::bail!("Failed to install {}", package);
     }
+
     Ok(())
 }

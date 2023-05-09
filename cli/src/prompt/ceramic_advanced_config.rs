@@ -129,7 +129,7 @@ pub fn configure_http_api(cfg: &mut Config, admin_did: &DidAndPrivateKey) -> any
 
 fn configure_network(cfg: &mut Config) -> anyhow::Result<()> {
     match cfg.network.id {
-        NetworkIdentifier::Local | NetworkIdentifier::Dev => {
+        NetworkIdentifier::Local => {
             let topic = cfg.network.pubsub_topic.clone().unwrap_or_else(|| {
                 format!(
                     "/ceramic/local-{}",
