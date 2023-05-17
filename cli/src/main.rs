@@ -120,6 +120,8 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
+    log::info!("Wheel setup is complete. If running a clay or mainnet node, please check out https://github.com/ceramicstudio/simpledeploy to deploy with k8s.");
+
     if let Some(child) = opt_child {
         log::info!("Ceramic is now running in the background. Please use another terminal for additional commands. You can interrupt ceramic using ctrl-c.");
         child.await?;
