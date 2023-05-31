@@ -31,7 +31,7 @@ pub async fn prompt(path: impl AsRef<Path>) -> anyhow::Result<DidAndPrivateKey> 
         DidSelect::Generate => {
             let doc = DidAndPrivateKey::generate()?;
             if let Some(p) = Text::new("File to save DID private key to? (Escape to skip)")
-                .with_default(&path.as_ref().join("admin.pk").to_string_lossy())
+                .with_default(&path.as_ref().join("admin.sk").to_string_lossy())
                 .prompt_skippable()?
             {
                 let mut opts = tokio::fs::OpenOptions::new();

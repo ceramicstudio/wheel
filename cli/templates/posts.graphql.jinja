@@ -1,0 +1,11 @@
+type BasicProfile @loadModel(id: "{{model}}") {
+    id: ID!
+}
+
+type Posts @createModel(accountRelation: LIST, description: "A simple Post") {
+    body: String! @string(minLength: 1, maxLength: 100)
+    edited: DateTime
+    created: DateTime!
+    profileId: StreamID! @documentReference(model:"BasicProfile")
+    profile: BasicProfile! @relationDocument(property: "profileId")
+}

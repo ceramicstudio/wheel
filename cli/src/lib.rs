@@ -29,7 +29,9 @@ pub async fn interactive(
             NetworkIdentifier::Mainnet,
         ],
     )
-    .with_help_message(r#"Corresponds with network type, will be used to configure defaults when not using advanced configuration. InMemory is recommended when trying out Ceramic and ComposeDB, but nodes will not anchor"#)
+    .with_help_message(r#"InMemory is recommended when trying out Ceramic and ComposeDB (but nodes will not anchor).
+Other network types will require to setup up authentication with CAS (Ceramic Anchoring Service).
+Selection is used to setup project defaults"#)
     .prompt()?;
 
     log::info!("Starting configuration for {} project", network_identifier);
@@ -45,6 +47,15 @@ pub async fn interactive(
         Confirm::new("Include ComposeDB?")
             .with_help_message("Installs ComposeDB and allows ComposeDB cli to be run")
             .with_default(true)
+            .prompt()?
+    } else {
+        false
+    };
+
+    let with_app_template = if with_composedb {
+        Confirm::new("Include ComposeDB Sample Application")
+            .with_help_message("Installs a sample application using ComposeDB")
+            .with_default(false)
             .prompt()?
     } else {
         false
@@ -73,6 +84,12 @@ pub async fn interactive(
 
     cfg.http_api.admin_dids.push(doc.did().to_string());
 
+    if with_app_template {
+        if NetworkIdentifier::InMemory == network_identifier {
+            cfg.http_api.cors_allowed_origins = vec![".*".to_string()];
+        }
+    }
+
     match network_identifier {
         NetworkIdentifier::InMemory => {
             prompt::prompt(&project.path, &mut cfg, &doc).await?;
@@ -99,6 +116,7 @@ pub async fn interactive(
         versions,
         with_ceramic,
         with_composedb,
+        with_app_template,
         false,
     )
     .await
@@ -111,6 +129,7 @@ pub struct QuietOptions {
     pub did: DidAndPrivateKey,
     pub with_ceramic: bool,
     pub with_composedb: bool,
+    pub with_app_template: bool,
 }
 
 pub async fn quiet(opts: QuietOptions) -> anyhow::Result<Option<JoinHandle<()>>> {
@@ -151,6 +170,7 @@ pub async fn quiet(opts: QuietOptions) -> anyhow::Result<Option<JoinHandle<()>>>
         opts.versions,
         opts.with_ceramic,
         opts.with_composedb,
+        opts.with_app_template,
         true,
     )
     .await
@@ -164,6 +184,7 @@ async fn finish_setup(
     versions: Versions,
     with_ceramic: bool,
     with_composedb: bool,
+    with_app_template: bool,
     quiet: bool,
 ) -> anyhow::Result<Option<JoinHandle<()>>> {
     log::info!("Saving config to {}", cfg_file_path.display());
@@ -181,22 +202,34 @@ async fn finish_setup(
     let daemon_config_file = write_daemon_config(&project.path, &cfg).await?;
 
     let opt_child = if with_ceramic {
-        let opt_child = install::ceramic_daemon::install_ceramic_daemon(
+        install::ceramic_daemon::install_ceramic_daemon(
             &project.path,
             &cfg,
             &versions.ceramic,
             &daemon_config_file,
             quiet,
         )
-        .await?;
-        if with_composedb {
-            install::compose_db::install_compose_db(&cfg, &doc, &project.path, &versions.composedb)
-                .await?;
-        }
-        opt_child
+        .await?
     } else {
         None
     };
+
+    if with_composedb {
+        install::compose_db::install_compose_db(&cfg, &doc, &project.path, &versions.composedb)
+            .await?;
+    }
+
+    if with_app_template {
+        if opt_child.is_none() {
+            anyhow::bail!("Cannot install app template without ceramic daemon");
+        }
+        install::ceramic_app_template::install_ceramic_app_template(
+            &project.path,
+            &project.name,
+            &daemon_config_file,
+        )
+        .await?;
+    }
 
     log::info!(
         "Project {} created at {} for network {}",

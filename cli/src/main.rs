@@ -31,6 +31,7 @@ impl std::fmt::Display for Network {
 enum Setup {
     CeramicOnly,
     ComposeDB,
+    DemoApplication,
 }
 
 impl std::fmt::Display for Setup {
@@ -38,6 +39,7 @@ impl std::fmt::Display for Setup {
         match self {
             Self::CeramicOnly => write!(f, "Ceramic Only"),
             Self::ComposeDB => write!(f, "ComposeDB"),
+            Self::DemoApplication => write!(f, "Demo Application"),
         }
     }
 }
@@ -108,13 +110,15 @@ async fn main() -> anyhow::Result<()> {
             };
             let did = DidAndPrivateKey::new(q.private_key, Document::new(&q.did));
             let with_composedb = q.setup == Setup::ComposeDB;
+            let with_app_template = q.setup == Setup::DemoApplication;
             wheel_3box::quiet(wheel_3box::QuietOptions {
                 working_directory,
                 network_identifier: network,
                 versions,
                 did,
-                with_ceramic: with_composedb || q.setup == Setup::CeramicOnly,
-                with_composedb: with_composedb,
+                with_ceramic: with_app_template || with_composedb || q.setup == Setup::CeramicOnly,
+                with_composedb: with_app_template || with_composedb,
+                with_app_template: with_app_template,
             })
             .await?
         }
