@@ -5,6 +5,16 @@ use tokio::io::AsyncWriteExt;
 use crate::did::DidAndPrivateKey;
 use crate::install::npm::npm_install_package;
 
+pub fn compose_db_environment(cfg: &ceramic_config::Config, admin_did: &DidAndPrivateKey) -> String {
+    let hostname = format!("http://{}:{}", cfg.http_api.hostname, cfg.http_api.port);
+    format!(r#"export DID_PRIVATE_KEY={}
+export CERAMIC_URL={}
+"#,
+        admin_did.pk(),
+        hostname,
+    )
+}
+
 pub async fn install_compose_db(
     cfg: &ceramic_config::Config,
     admin_did: &DidAndPrivateKey,
@@ -17,7 +27,6 @@ pub async fn install_compose_db(
     }
     npm_install_package(working_directory, &program).await?;
 
-    let hostname = format!("http://{}:{}", cfg.http_api.hostname, cfg.http_api.port);
     let env_file = working_directory.join("composedb.env");
     let mut f = tokio::fs::OpenOptions::new()
         .write(true)
@@ -26,9 +35,8 @@ pub async fn install_compose_db(
         .open(&env_file)
         .await?;
 
-    f.write_all(format!("export DID_PRIVATE_KEY={}", admin_did.pk()).as_bytes())
-        .await?;
-    f.write_all(format!("\nexport CERAMIC_URL={}", hostname).as_bytes())
+    let env = compose_db_environment(cfg, admin_did);
+    f.write_all(env.as_bytes())
         .await?;
     f.flush().await?;
 
@@ -38,7 +46,7 @@ pub async fn install_compose_db(
             .join(".bin")
             .join("composedb"),
         working_directory.join("composedb"),
-        &format!("source {}", env_file.display()),
+        &env,
     )
     .await?;
 

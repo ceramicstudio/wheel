@@ -35,7 +35,7 @@ pub async fn create_invoke_script(
     f.write_all(
         format!(
             r#"
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 {}
 node {} "$@"
 "#,
