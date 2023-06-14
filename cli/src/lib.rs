@@ -53,7 +53,7 @@ Selection is used to setup project defaults"#)
     };
 
     let with_app_template = if with_composedb {
-        Confirm::new("Include ComposeDB Sample Application")
+        Confirm::new("Include ComposeDB Sample Application?")
             .with_help_message("Installs a sample application using ComposeDB")
             .with_default(false)
             .prompt()?
