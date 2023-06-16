@@ -18,11 +18,11 @@ enum Network {
 impl std::fmt::Display for Network {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::InMemory => write!(f, "InMemory"),
-            Self::Local => write!(f, "Local"),
-            Self::Dev => write!(f, "Dev"),
-            Self::Clay => write!(f, "Clay"),
-            Self::Mainnet => write!(f, "Mainnet"),
+            Self::InMemory => write!(f, "in-memory"),
+            Self::Local => write!(f, "local"),
+            Self::Dev => write!(f, "dev"),
+            Self::Clay => write!(f, "clay"),
+            Self::Mainnet => write!(f, "mainnet"),
         }
     }
 }
@@ -37,27 +37,45 @@ enum Setup {
 impl std::fmt::Display for Setup {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::CeramicOnly => write!(f, "Ceramic Only"),
-            Self::ComposeDB => write!(f, "ComposeDB"),
-            Self::DemoApplication => write!(f, "Demo Application"),
+            Self::CeramicOnly => write!(f, "ceramic-only"),
+            Self::ComposeDB => write!(f, "compose-db"),
+            Self::DemoApplication => write!(f, "demo-application"),
         }
     }
 }
 
 #[derive(Clone, Debug, Parser)]
-struct QuietOptions {
-    #[arg(long, short = 'n', default_value_t = Network::Clay)]
-    network: Network,
+struct DidOptions {
     #[arg(long)]
     did: String,
     #[arg(long, help = "Valid Ed25519 private key")]
     private_key: String,
+}
+
+#[derive(Subcommand, Debug)]
+enum DidCommand {
+    #[command(about = "Generate a new did and private key")]
+    Generate,
+    // Specify a did and private key
+    #[command(about = "Input a did and private key")]
+    Specify(DidOptions),
+}
+
+#[derive(Parser, Debug)]
+struct QuietOptions {
+    #[arg(long)]
+    project_name: Option<String>,
+    #[arg(long, short = 'n', default_value_t = Network::Clay)]
+    network: Network,
+    #[command(subcommand)]
+    did: DidCommand,
     #[arg(long, default_value_t = Setup::ComposeDB)]
     setup: Setup,
 }
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    #[command(about = "Non-interactive setup for ceramic and compose-db")]
     Quiet(QuietOptions),
 }
 
@@ -108,11 +126,16 @@ async fn main() -> anyhow::Result<()> {
                 Network::Clay => wheel_3box::NetworkIdentifier::Clay,
                 Network::Mainnet => wheel_3box::NetworkIdentifier::Mainnet,
             };
-            let did = DidAndPrivateKey::new(q.private_key, Document::new(&q.did));
+            let did = if let DidCommand::Specify(opts) = q.did {
+                DidAndPrivateKey::new(opts.private_key, Document::new(&opts.did))
+            } else {
+                DidAndPrivateKey::generate()?
+            };
             let with_composedb = q.setup == Setup::ComposeDB;
             let with_app_template = q.setup == Setup::DemoApplication;
             wheel_3box::quiet(wheel_3box::QuietOptions {
-                working_directory,
+                project_name: q.project_name,
+                working_directory: working_directory,
                 network_identifier: network,
                 versions,
                 did,
