@@ -6,18 +6,14 @@ pub async fn npm_install_package(
     working_directory: impl AsRef<Path>,
     package: &str,
 ) -> anyhow::Result<()> {
-    let version = Command::new("npm").args(&["-v"]).output().await?;
-    let ver = semver::Version::parse(String::from_utf8_lossy(&version.stdout).trim())?;
-    if ver.major < 9 || (ver.major == 9 && ver.minor <= 5) {
-        let status = Command::new("npm")
-            .args(&["init", "--yes"])
-            .current_dir(working_directory.as_ref())
-            .status()
-            .await?;
+    let status = Command::new("npm")
+        .args(&["init", "--yes"])
+        .current_dir(working_directory.as_ref())
+        .status()
+        .await?;
 
-        if !status.success() {
-            anyhow::bail!("Failed to init npm, cannot download {}", package);
-        }
+    if !status.success() {
+        anyhow::bail!("Failed to init npm, cannot download {}", package);
     }
 
     npm_install(working_directory, &Some(&package)).await?;
