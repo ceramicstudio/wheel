@@ -123,6 +123,7 @@ Selection is used to setup project defaults"#)
 }
 
 pub struct QuietOptions {
+    pub project_name: Option<String>,
     pub working_directory: PathBuf,
     pub network_identifier: NetworkIdentifier,
     pub versions: Versions,
@@ -133,9 +134,11 @@ pub struct QuietOptions {
 }
 
 pub async fn quiet(opts: QuietOptions) -> anyhow::Result<Option<JoinHandle<()>>> {
+    let project_name = opts.project_name.unwrap_or_else(|| "ceramic-app".to_string());
+    let project_path = opts.working_directory.join(&project_name);
     let project = Project {
-        name: "ceramic-app".to_string(),
-        path: opts.working_directory,
+        name: project_name,
+        path: project_path,
     };
 
     if !project.path.exists() {
