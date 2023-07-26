@@ -1,10 +1,8 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use log::LevelFilter;
-use ssi::did::Document;
 use std::fmt::Formatter;
 use std::io::Write;
 use std::path::PathBuf;
-use wheel_3box::DidAndPrivateKey;
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
 enum Network {
@@ -126,13 +124,16 @@ async fn main() -> anyhow::Result<()> {
                 Network::Clay => wheel_3box::NetworkIdentifier::Clay,
                 Network::Mainnet => wheel_3box::NetworkIdentifier::Mainnet,
             };
-            let did = if let DidCommand::Specify(opts) = q.did {
-                DidAndPrivateKey::new(opts.private_key, Document::new(&opts.did))
-            } else {
-                DidAndPrivateKey::generate()?
-            };
             let with_composedb = q.setup == Setup::ComposeDB;
             let with_app_template = q.setup == Setup::DemoApplication;
+            let did = if let DidCommand::Specify(opts) = q.did {
+                Some(wheel_3box::DidOptions {
+                    did: opts.did,
+                    private_key: opts.private_key,
+                })
+            } else {
+                None
+            };
             wheel_3box::quiet(wheel_3box::QuietOptions {
                 project_name: q.project_name,
                 working_directory: working_directory,

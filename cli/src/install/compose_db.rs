@@ -5,9 +5,13 @@ use tokio::io::AsyncWriteExt;
 use crate::did::DidAndPrivateKey;
 use crate::install::npm::npm_install_package;
 
-pub fn compose_db_environment(cfg: &ceramic_config::Config, admin_did: &DidAndPrivateKey) -> String {
+pub fn compose_db_environment(
+    cfg: &ceramic_config::Config,
+    admin_did: &DidAndPrivateKey,
+) -> String {
     let hostname = format!("http://{}:{}", cfg.http_api.hostname, cfg.http_api.port);
-    format!(r#"export DID_PRIVATE_KEY={}
+    format!(
+        r#"export DID_PRIVATE_KEY={}
 export CERAMIC_URL={}
 "#,
         admin_did.pk(),
@@ -36,8 +40,7 @@ pub async fn install_compose_db(
         .await?;
 
     let env = compose_db_environment(cfg, admin_did);
-    f.write_all(env.as_bytes())
-        .await?;
+    f.write_all(env.as_bytes()).await?;
     f.flush().await?;
 
     crate::install::create_invoke_script(

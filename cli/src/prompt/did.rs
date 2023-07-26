@@ -1,6 +1,5 @@
 use inquire::*;
 use std::path::{Path, PathBuf};
-use tokio::io::AsyncWriteExt;
 
 use crate::did::DidAndPrivateKey;
 
@@ -29,18 +28,11 @@ pub async fn prompt(path: impl AsRef<Path>) -> anyhow::Result<DidAndPrivateKey> 
 
     let doc = match ans {
         DidSelect::Generate => {
-            let doc = DidAndPrivateKey::generate()?;
-            if let Some(p) = Text::new("File to save DID private key to? (Escape to skip)")
+            let sk_path = Text::new("File to save DID private key to? (Escape to skip)")
                 .with_default(&path.as_ref().join("admin.sk").to_string_lossy())
                 .prompt_skippable()?
-            {
-                let mut opts = tokio::fs::OpenOptions::new();
-                opts.write(true).create(true).append(false);
-                let mut f = opts.open(p).await?;
-                f.write(doc.pk().as_bytes()).await?;
-                f.flush().await?;
-            }
-            Ok(doc)
+                .map(PathBuf::from);
+            DidAndPrivateKey::generate(sk_path).await
         }
         DidSelect::Input => {
             let k = Password::new("Admin DID Private Key").prompt()?;
