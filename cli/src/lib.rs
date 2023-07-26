@@ -7,6 +7,7 @@ pub use ceramic_config::NetworkIdentifier;
 use ceramic_config::{Anchor, CasAuth, Config};
 use inquire::*;
 use prompt::project::Project;
+use ssi::did::Document;
 use std::path::{Path, PathBuf};
 use tokio::{io::AsyncWriteExt, task::JoinHandle};
 
@@ -122,19 +123,26 @@ Selection is used to setup project defaults"#)
     .await
 }
 
+pub struct DidOptions {
+    pub did: String,
+    pub private_key: String,
+}
+
 pub struct QuietOptions {
     pub project_name: Option<String>,
     pub working_directory: PathBuf,
     pub network_identifier: NetworkIdentifier,
     pub versions: Versions,
-    pub did: DidAndPrivateKey,
+    pub did: Option<DidOptions>,
     pub with_ceramic: bool,
     pub with_composedb: bool,
     pub with_app_template: bool,
 }
 
 pub async fn quiet(opts: QuietOptions) -> anyhow::Result<Option<JoinHandle<()>>> {
-    let project_name = opts.project_name.unwrap_or_else(|| "ceramic-app".to_string());
+    let project_name = opts
+        .project_name
+        .unwrap_or_else(|| "ceramic-app".to_string());
     let project_path = opts.working_directory.join(&project_name);
     let project = Project {
         name: project_name,
@@ -149,8 +157,13 @@ pub async fn quiet(opts: QuietOptions) -> anyhow::Result<Option<JoinHandle<()>>>
         tokio::fs::create_dir_all(&project.path).await?;
     }
 
+    let did = if let Some(opts) = opts.did {
+        DidAndPrivateKey::new(opts.private_key, Document::new(&opts.did))
+    } else {
+        DidAndPrivateKey::generate(Some(project.path.join("admin.sk"))).await?
+    };
     let cas_auth = Anchor::url_for_network(&opts.network_identifier).map(|url| {
-        let pk = opts.did.cas_auth();
+        let pk = did.cas_auth();
         CasAuth { url, pk: Some(pk) }
     });
     let cfg_file_path = project.path.join("ceramic.json");
@@ -163,13 +176,13 @@ pub async fn quiet(opts: QuietOptions) -> anyhow::Result<Option<JoinHandle<()>>>
     )
     .await?;
 
-    cfg.http_api.admin_dids.push(opts.did.did().to_string());
+    cfg.http_api.admin_dids.push(did.did().to_string());
 
     finish_setup(
         project,
         cfg,
         cfg_file_path,
-        opts.did,
+        did,
         opts.versions,
         opts.with_ceramic,
         opts.with_composedb,

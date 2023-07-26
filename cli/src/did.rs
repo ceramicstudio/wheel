@@ -2,6 +2,8 @@ use ssi::{
     did::{DIDMethod, Document, DocumentBuilder, Source},
     jwk::Params,
 };
+use std::path::Path;
+use tokio::io::AsyncWriteExt;
 
 pub struct DidAndPrivateKey {
     private_key: String,
@@ -28,7 +30,7 @@ impl DidAndPrivateKey {
         &self.private_key
     }
 
-    pub fn generate() -> anyhow::Result<DidAndPrivateKey> {
+    pub async fn generate(sk_path: Option<impl AsRef<Path>>) -> anyhow::Result<DidAndPrivateKey> {
         // let mut vc = ssi::vc::Credential;
         let key = ssi::jwk::JWK::generate_ed25519()?;
         let private_key = if let Params::OKP(params) = &key.params {
@@ -40,6 +42,13 @@ impl DidAndPrivateKey {
         } else {
             anyhow::bail!("Invalid private key");
         };
+        if let Some(p) = sk_path {
+            let mut opts = tokio::fs::OpenOptions::new();
+            opts.write(true).create(true).append(false);
+            let mut f = opts.open(p).await?;
+            f.write(private_key.as_bytes()).await?;
+            f.flush().await?;
+        }
         let did = did_method_key::DIDKey
             .generate(&Source::Key(&key))
             .ok_or_else(|| anyhow::anyhow!("Failed to generate DID"))?;
