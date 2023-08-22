@@ -53,11 +53,10 @@ pub async fn install_compose_db(
     )
     .await?;
 
-    let network_info_msg = if convert_network_identifier(&cfg.network.id) == "inmemory" {
-        String::from("")
+    let network_name = if convert_network_identifier(&cfg.network.id) == "inmemory" {
+        "testnet-clay"
     } else {
-        format!("\n\nTo list available models for usage, use\n\n    ./composedb model:list --network={} --table", 
-               convert_network_identifier(&cfg.network.id))
+        &convert_network_identifier(&cfg.network.id)
     };
     
     log::info!(
@@ -66,7 +65,11 @@ pub async fn install_compose_db(
     
     You can run composedb with
     
-        ./composedb{}
+        ./composedb
+    
+    To list available models for usage, use
+    
+        ./composedb model:list --network={} --table
     
     To run the graphiql server use
     
@@ -75,7 +78,7 @@ pub async fn install_compose_db(
     For more information on composedb and commands to run, see https://composedb.js.org/docs/0.4.x/first-composite
     
     You can also take a look at https://github.com/ceramicstudio/EthDenver2023Demo for more ideas on using ComposeDB."#,
-        network_info_msg
+        network_name
     );
 
     Ok(())
