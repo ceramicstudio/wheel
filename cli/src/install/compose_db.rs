@@ -1,4 +1,5 @@
 use ceramic_config::convert_network_identifier;
+use ceramic_config::NetworkIdentifier;
 use std::path::Path;
 use tokio::io::AsyncWriteExt;
 
@@ -53,27 +54,33 @@ pub async fn install_compose_db(
     )
     .await?;
 
+    let network_id_for_model_list = if let NetworkIdentifier::InMemory = &cfg.network.id {
+        NetworkIdentifier::Clay
+    } else {
+        cfg.network.id.clone()
+    };
+    let network_name = convert_network_identifier(&network_id_for_model_list);
+    
     log::info!(
         r#"
-ComposeDB cli now available.
-
-You can run composedb with
-
-    ./composedb
-
-To list available models for usage, use
-
-    ./composedb model:list --network={} --table
-
-To run the graphiql server use
-
-    ./composedb graphql:server --graphiql --port 5005 <path to compiled composite>
+    ComposeDB cli now available.
     
-For more information on composedb and commands to run, see https://composedb.js.org/docs/0.4.x/first-composite
-
-You can also take a look at https://github.com/ceramicstudio/EthDenver2023Demo for more ideas on using ComposeDB.
-        "#,
-        convert_network_identifier(&cfg.network.id)
+    You can run composedb with
+    
+        ./composedb
+    
+    To list available models for usage, use
+    
+        ./composedb model:list --network={} --table
+    
+    To run the graphiql server use
+    
+        ./composedb graphql:server --graphiql --port 5005 <path to compiled composite>
+        
+    For more information on composedb and commands to run, see https://composedb.js.org/docs/0.4.x/first-composite
+    
+    You can also take a look at https://github.com/ceramicstudio/EthDenver2023Demo for more ideas on using ComposeDB."#,
+        network_name
     );
 
     Ok(())
