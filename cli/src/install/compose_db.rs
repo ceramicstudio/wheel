@@ -1,4 +1,5 @@
 use ceramic_config::convert_network_identifier;
+use ceramic_config::NetworkIdentifier;
 use std::path::Path;
 use tokio::io::AsyncWriteExt;
 
@@ -53,11 +54,12 @@ pub async fn install_compose_db(
     )
     .await?;
 
-    let network_name = if convert_network_identifier(&cfg.network.id) == "inmemory" {
-        "testnet-clay"
+    let network_id_for_model_list = if let NetworkIdentifier::InMemory = &cfg.network.id {
+        NetworkIdentifier::Clay
     } else {
-        &convert_network_identifier(&cfg.network.id)
+        cfg.network.id.clone()
     };
+    let network_name = convert_network_identifier(&network_id_for_model_list);
     
     log::info!(
         r#"
