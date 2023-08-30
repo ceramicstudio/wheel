@@ -9,7 +9,7 @@ publish = false
 [dependencies]
 anyhow.workspace = true
 askama = "0.12.0"
-ceramic-config = { path = "../ceramic-config", version = "0.1.50" }
+ceramic-config = { path = "../ceramic-config", version = "0.1.51" }
 clap = { version = "4.1.4", features = ["derive"] }
 did-method-key = "0.2"
 env_logger = "0.10"
