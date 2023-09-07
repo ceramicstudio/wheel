@@ -17,6 +17,100 @@ pub struct Versions {
     pub composedb: Option<semver::Version>,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum DefaultChoice {
+    Keep,
+    Change,
+    Exit,
+}
+
+impl std::fmt::Display for DefaultChoice {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Keep => write!(f, "Keep"),
+            Self::Change => write!(f, "Change"),
+            Self::Exit => write!(f, "Exit"),
+        }
+    }
+}
+
+pub async fn interactive_default(
+    working_directory: PathBuf,
+    versions: Versions,
+) -> anyhow::Result<Option<JoinHandle<()>>> {
+    let network_identifier = NetworkIdentifier::InMemory;
+    let project = Project {
+        name: "ceramic-app".to_string(),
+        path: working_directory.join("ceramic-app"),
+    };
+    let did_sk_path = project.path.join("admin.sk");
+
+    log::info!(r#"Welcome to Wheel! By default, wheel will have the following configuration:
+    - Project Name: {}
+    - Project Directory: {}
+    - Network: {}
+    - Ceramic Included
+    - ComposeDB Included
+    - ComposeDB Sample Application Included
+    - DID Generated Secret Key Path: {}
+"#, project.name, project.path.display(), network_identifier, did_sk_path.display());
+
+    let default_choice = Select::new(
+        "Would you like to keep or change this configuration?",
+        vec![
+            DefaultChoice::Keep,
+            DefaultChoice::Change,
+            DefaultChoice::Exit,
+        ],
+    )
+        .with_help_message(r#"If you choose to change configuration, you will be walked through a set of interactive prompts."#)
+        .prompt()?;
+
+    match default_choice {
+        DefaultChoice::Exit => {
+            log::info!("Exiting wheel");
+            std::process::exit(0);
+        }
+        DefaultChoice::Change => {
+            interactive(working_directory, versions).await
+        }
+        DefaultChoice::Keep => {
+            if !tokio::fs::try_exists(&project.path).await? {
+                log::info!(
+                    "Project directory {} does not exist, creating it",
+                    project.path.display()
+                );
+                tokio::fs::create_dir_all(&project.path).await?;
+            }
+            let doc = DidAndPrivateKey::generate(Some(did_sk_path)).await?;
+            let cfg_file_path = project.path.join("ceramic.json");
+            let mut cfg = get_or_create_config(
+                &project,
+                &network_identifier,
+                None,
+                &project.path,
+                &cfg_file_path,
+            )
+            .await?;
+
+            cfg.http_api.admin_dids.push(doc.did().to_string());
+
+            finish_setup(
+                project,
+                cfg,
+                cfg_file_path,
+                doc,
+                versions,
+                true,
+                true,
+                true,
+                false,
+            ).await
+        }
+    }
+
+}
+
 pub async fn interactive(
     working_directory: PathBuf,
     versions: Versions,
