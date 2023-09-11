@@ -114,7 +114,7 @@ async fn main() -> anyhow::Result<()> {
     let opt_child = match args.command {
         None => {
             log::info!("Starting wheel interactive configuration");
-            wheel_3box::interactive(working_directory, versions).await?
+            wheel_3box::interactive_default(working_directory, versions).await?
         }
         Some(Commands::Quiet(q)) => {
             let network = match q.network {
