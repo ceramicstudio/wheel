@@ -86,6 +86,8 @@ struct ProgramArgs {
     ceramic_version: Option<String>,
     #[arg(long)]
     composedb_version: Option<String>,
+    #[arg(long)]
+    template_branch: Option<String>,
     #[command(subcommand)]
     command: Option<Commands>,
 }
@@ -109,6 +111,9 @@ async fn main() -> anyhow::Result<()> {
     }
     if let Some(v) = args.composedb_version {
         versions.composedb = Some(v.parse()?);
+    }
+    if let Some(v) = args.template_branch {
+        versions.template_branch = Some(v);
     }
 
     let opt_child = match args.command {

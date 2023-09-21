@@ -15,6 +15,7 @@ use tokio::{io::AsyncWriteExt, task::JoinHandle};
 pub struct Versions {
     pub ceramic: Option<semver::Version>,
     pub composedb: Option<semver::Version>,
+    pub template_branch: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -45,7 +46,8 @@ pub async fn interactive_default(
     };
     let did_sk_path = project.path.join("admin.sk");
 
-    log::info!(r#"Welcome to Wheel! By default, wheel will have the following configuration:
+    log::info!(
+        r#"Welcome to Wheel! By default, wheel will have the following configuration:
     - Project Name: {}
     - Project Directory: {}
     - Network: {}
@@ -53,7 +55,12 @@ pub async fn interactive_default(
     - ComposeDB Included
     - ComposeDB Sample Application Included
     - DID Generated Secret Key Path: {}
-"#, project.name, project.path.display(), network_identifier, did_sk_path.display());
+"#,
+        project.name,
+        project.path.display(),
+        network_identifier,
+        did_sk_path.display()
+    );
 
     let default_choice = Select::new(
         "Would you like to keep or change this configuration?",
@@ -71,9 +78,7 @@ pub async fn interactive_default(
             log::info!("Exiting wheel");
             std::process::exit(0);
         }
-        DefaultChoice::Change => {
-            interactive(working_directory, versions).await
-        }
+        DefaultChoice::Change => interactive(working_directory, versions).await,
         DefaultChoice::Keep => {
             if !tokio::fs::try_exists(&project.path).await? {
                 log::info!(
@@ -102,13 +107,14 @@ pub async fn interactive_default(
                 doc,
                 versions,
                 true,
-                true,
-                true,
                 false,
-            ).await
+                true,
+                true,
+                true,
+            )
+            .await
         }
     }
-
 }
 
 pub async fn interactive(
@@ -210,6 +216,7 @@ Selection is used to setup project defaults"#)
         doc,
         versions,
         with_ceramic,
+        true,
         with_composedb,
         with_app_template,
         false,
@@ -279,6 +286,7 @@ pub async fn quiet(opts: QuietOptions) -> anyhow::Result<Option<JoinHandle<()>>>
         did,
         opts.versions,
         opts.with_ceramic,
+        true,
         opts.with_composedb,
         opts.with_app_template,
         true,
@@ -293,6 +301,7 @@ async fn finish_setup(
     doc: DidAndPrivateKey,
     versions: Versions,
     with_ceramic: bool,
+    start_ceramic: bool,
     with_composedb: bool,
     with_app_template: bool,
     quiet: bool,
@@ -311,13 +320,15 @@ async fn finish_setup(
 
     let daemon_config_file = write_daemon_config(&project.path, &cfg).await?;
 
+    let start_ceramic = if quiet { Some(start_ceramic) } else { None };
+
     let opt_child = if with_ceramic {
         install::ceramic_daemon::install_ceramic_daemon(
             &project.path,
             &cfg,
             &versions.ceramic,
             &daemon_config_file,
-            quiet,
+            start_ceramic,
         )
         .await?
     } else {
@@ -330,12 +341,11 @@ async fn finish_setup(
     }
 
     if with_app_template {
-        if opt_child.is_none() {
-            anyhow::bail!("Cannot install app template without ceramic daemon");
-        }
         install::ceramic_app_template::install_ceramic_app_template(
+            &doc,
             &project.path,
             &project.name,
+            &versions.template_branch,
             &daemon_config_file,
         )
         .await?;
