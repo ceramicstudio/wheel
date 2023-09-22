@@ -30,7 +30,7 @@ pub async fn install_compose_db(
     if let Some(v) = version.as_ref() {
         program.push_str(&format!("@{}", v.to_string()));
     }
-    npm_install_package(working_directory, &program).await?;
+    npm_install_package(working_directory, &program, true).await?;
 
     let env_file = working_directory.join("composedb.env");
     let mut f = tokio::fs::OpenOptions::new()
@@ -60,7 +60,7 @@ pub async fn install_compose_db(
         cfg.network.id.clone()
     };
     let network_name = convert_network_identifier(&network_id_for_model_list);
-    
+
     log::info!(
         r#"
     ComposeDB cli now available.

@@ -5,6 +5,7 @@ use tokio::process::Command;
 pub async fn npm_install_package(
     working_directory: impl AsRef<Path>,
     package: &str,
+    globally: bool,
 ) -> anyhow::Result<()> {
     let status = Command::new("npm")
         .args(&["init", "--yes"])
@@ -16,7 +17,7 @@ pub async fn npm_install_package(
         anyhow::bail!("Failed to init npm, cannot download {}", package);
     }
 
-    npm_install(working_directory, &Some(&package)).await?;
+    npm_install(working_directory, &Some(&package), globally).await?;
 
     Ok(())
 }
@@ -24,9 +25,13 @@ pub async fn npm_install_package(
 pub async fn npm_install(
     working_directory: impl AsRef<Path>,
     package: &Option<&str>,
+    globally: bool,
 ) -> anyhow::Result<()> {
     let msg = "Installing dependencies";
     let mut args = vec!["install"];
+    if globally {
+        args.push("-g");
+    }
     let msg = if let Some(p) = package {
         args.push(p);
         format!("{} for {}", msg, p)

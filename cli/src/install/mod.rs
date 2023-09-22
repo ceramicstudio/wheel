@@ -1,7 +1,6 @@
 pub mod ceramic_app_template;
 pub mod ceramic_daemon;
 pub mod compose_db;
-mod models;
 mod npm;
 mod verify_db;
 

@@ -20,7 +20,7 @@ pub async fn install_ceramic_daemon(
     cfg: &Config,
     version: &Option<semver::Version>,
     ceramic_config_file: &Path,
-    quiet: bool,
+    start_ceramic: Option<bool>,
 ) -> anyhow::Result<Option<JoinHandle<()>>> {
     verify_db::verify(&cfg).await?;
 
@@ -39,14 +39,14 @@ pub async fn install_ceramic_daemon(
     if let Some(v) = version.as_ref() {
         program.push_str(&format!("@{}", v.to_string()));
     }
-    npm_install_package(&working_directory, &program).await?;
+    npm_install_package(&working_directory, &program, true).await?;
 
-    let ans = if quiet {
-        true
-    } else {
-        Confirm::new(&format!("Would you like ceramic started as a daemon?"))
+    let ans = match start_ceramic {
+        Some(true) => true,
+        Some(false) => false,
+        None => Confirm::new(&format!("Would you like ceramic started as a daemon?"))
             .with_default(true)
-            .prompt()?
+            .prompt()?,
     };
 
     let ceramic_path = working_directory

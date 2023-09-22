@@ -1,18 +1,27 @@
+use crate::DidAndPrivateKey;
 use std::path::Path;
 use tokio::io::AsyncWriteExt;
 
 use crate::install::npm::npm_install;
 
 const REPO: &'static str = "https://github.com/ceramicstudio/EthDenver2023Demo";
-const ZIP_PATH: &'static str = "/archive/refs/heads/main.zip";
 
 pub async fn install_ceramic_app_template(
+    key: &DidAndPrivateKey,
     working_directory: &Path,
     project_name: &str,
+    template_branch: &Option<String>,
     daemon_config_file: impl AsRef<Path>,
 ) -> anyhow::Result<()> {
     log::info!("Setting up application template from {}", REPO);
-    let data = reqwest::get(format!("{}{}", REPO, ZIP_PATH))
+    let zip_path = format!(
+        "/archive/refs/heads/{}.zip",
+        template_branch
+            .as_ref()
+            .map(|s| s.as_str())
+            .unwrap_or("main")
+    );
+    let data = reqwest::get(format!("{}{}", REPO, zip_path))
         .await?
         .bytes()
         .await?;
@@ -35,7 +44,7 @@ pub async fn install_ceramic_app_template(
 
     tokio::fs::rename(&unzip_dir, &output_dir).await?;
 
-    npm_install(&output_dir, &None).await?;
+    npm_install(&output_dir, &None, false).await?;
 
     let readme = output_dir.join("README.md");
     let mut f = tokio::fs::OpenOptions::new()
@@ -72,9 +81,17 @@ You can check out [Create Ceramic App repo](https://github.com/ceramicstudio/cre
     let demo_config_file = output_dir.join("composedb.config.json");
     tokio::fs::copy(&daemon_config_file, &demo_config_file).await?;
 
+    let seed_file = output_dir.join("admin_seed.txt");
+    tokio::fs::write(&seed_file, key.pk().as_bytes()).await?;
+
     log::info!("Building composites");
 
-    crate::install::models::build_composite(&working_directory, &output_dir).await?;
+    tokio::process::Command::new("npm")
+        .current_dir(&output_dir)
+        .arg("run")
+        .arg("dev")
+        .status()
+        .await?;
 
     log::info!(
         r#"Application demo is available at {}. To run the demo application
