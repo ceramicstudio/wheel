@@ -1,4 +1,5 @@
 use spinners::{Spinner, Spinners};
+use std::io::BufRead;
 use std::path::Path;
 use tokio::process::Command;
 
@@ -45,7 +46,20 @@ pub async fn npm_install(
         .output()
         .await?;
     if !out.status.success() {
-        anyhow::bail!("Failed to install app template dependencies");
+        log::error!("Failed to install");
+        let b = std::io::BufReader::new(std::io::Cursor::new(out.stdout));
+        for l in b.lines() {
+            if let Ok(l) = l {
+                log::error!("{l}");
+            }
+        }
+        let b = std::io::BufReader::new(std::io::Cursor::new(out.stderr));
+        for l in b.lines() {
+            if let Ok(l) = l {
+                log::error!("err: {l}");
+            }
+        }
+        anyhow::bail!("Failed to install, please see output");
     }
     s.stop_with_newline();
     Ok(())
