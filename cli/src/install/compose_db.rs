@@ -30,7 +30,7 @@ pub async fn install_compose_db(
     if let Some(v) = version.as_ref() {
         program.push_str(&format!("@{}", v.to_string()));
     }
-    npm_install_package(working_directory, &program, true).await?;
+    npm_install_package(working_directory, &program, false).await?;
 
     let env_file = working_directory.join("composedb.env");
     let mut f = tokio::fs::OpenOptions::new()
@@ -64,21 +64,21 @@ pub async fn install_compose_db(
     log::info!(
         r#"
     ComposeDB cli now available.
-    
+
     You can run composedb with
-    
+
         ./composedb
-    
+
     To list available models for usage, use
-    
+
         ./composedb model:list --network={} --table
-    
+
     To run the graphiql server use
-    
+
         ./composedb graphql:server --graphiql --port 5005 <path to compiled composite>
-        
+
     For more information on composedb and commands to run, see https://composedb.js.org/docs/0.4.x/first-composite
-    
+
     You can also take a look at https://github.com/ceramicstudio/EthDenver2023Demo for more ideas on using ComposeDB."#,
         network_name
     );
