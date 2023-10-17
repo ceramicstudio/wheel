@@ -79,7 +79,7 @@ pub async fn install_compose_db(
         
     For more information on composedb and commands to run, see https://composedb.js.org/docs/0.4.x/first-composite
     
-    You can also take a look at https://github.com/ceramicstudio/EthDenver2023Demo for more ideas on using ComposeDB."#,
+    You can also take a look at https://github.com/ceramicstudio/ComposeDbExampleApp for more ideas on using ComposeDB."#,
         network_name
     );
 
