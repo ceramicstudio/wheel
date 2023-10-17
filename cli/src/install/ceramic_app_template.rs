@@ -4,7 +4,7 @@ use tokio::io::AsyncWriteExt;
 
 use crate::install::npm::npm_install;
 
-const REPO: &'static str = "https://github.com/ceramicstudio/EthDenver2023Demo";
+const REPO: &'static str = "https://github.com/ceramicstudio/ComposeDbExampleApp";
 
 pub async fn install_ceramic_app_template(
     key: &DidAndPrivateKey,
@@ -29,7 +29,7 @@ pub async fn install_ceramic_app_template(
     let output_dir = working_directory.join(format!("{}-app", project_name));
     let b_output_dir = working_directory.to_path_buf();
 
-    let unzip_dir = working_directory.join("EthDenver2023Demo-main");
+    let unzip_dir = working_directory.join("ComposeDbExampleApp-main");
     if tokio::fs::try_exists(&unzip_dir).await? {
         tokio::fs::remove_dir_all(&unzip_dir).await?;
     }
