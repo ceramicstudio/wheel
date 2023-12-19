@@ -1,4 +1,5 @@
 use crate::DidAndPrivateKey;
+use anyhow::Context;
 use std::path::Path;
 use tokio::io::AsyncWriteExt;
 
@@ -13,14 +14,16 @@ pub async fn install_ceramic_app_template(
     template_branch: &Option<String>,
     daemon_config_file: impl AsRef<Path>,
 ) -> anyhow::Result<()> {
-    log::info!("Setting up application template from {}", REPO);
-    let zip_path = format!(
-        "/archive/refs/heads/{}.zip",
-        template_branch
-            .as_ref()
-            .map(|s| s.as_str())
-            .unwrap_or("main")
+    let branch_name = template_branch
+        .as_ref()
+        .map(|s| s.as_str())
+        .unwrap_or("main");
+    log::info!(
+        "Setting up application template from {} using branch {}",
+        REPO,
+        branch_name
     );
+    let zip_path = format!("/archive/refs/heads/{}.zip", branch_name);
     let data = reqwest::get(format!("{}{}", REPO, zip_path))
         .await?
         .bytes()
@@ -29,7 +32,10 @@ pub async fn install_ceramic_app_template(
     let output_dir = working_directory.join(format!("{}-app", project_name));
     let b_output_dir = working_directory.to_path_buf();
 
-    let unzip_dir = working_directory.join("ComposeDbExampleApp-main");
+    let unzip_dir = working_directory.join(&format!(
+        "ComposeDbExampleApp-{}",
+        branch_name.replace("/", "-")
+    ));
     if tokio::fs::try_exists(&unzip_dir).await? {
         tokio::fs::remove_dir_all(&unzip_dir).await?;
     }
@@ -42,7 +48,12 @@ pub async fn install_ceramic_app_template(
     })
     .await??;
 
-    tokio::fs::rename(&unzip_dir, &output_dir).await?;
+    tokio::fs::rename(&unzip_dir, &output_dir)
+        .await
+        .context(format!(
+            "failed to rename {:?} to {:?}",
+            unzip_dir, output_dir
+        ))?;
 
     npm_install(&output_dir, &None, false).await?;
 
