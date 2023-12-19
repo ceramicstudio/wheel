@@ -156,6 +156,7 @@ Selection is used to setup project defaults"#)
     let with_app_template = if with_composedb {
         Confirm::new("Include ComposeDB Sample Application?")
             .with_help_message("Installs a sample application using ComposeDB")
+            // different than non-interactive defaults, but this user is more likely to have an app
             .with_default(false)
             .prompt()?
     } else {

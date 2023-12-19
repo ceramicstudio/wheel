@@ -8,7 +8,7 @@ pub struct Project {
 
 pub async fn configure_project(working_directory: impl AsRef<Path>) -> anyhow::Result<Project> {
     let project_name = Text::new("Project Name")
-        .with_default("ceramic-test-app")
+        .with_default("ceramic-app")
         .prompt()?;
     let project_path = working_directory.as_ref().join(&project_name);
     let project_path = Text::new("Project Path")

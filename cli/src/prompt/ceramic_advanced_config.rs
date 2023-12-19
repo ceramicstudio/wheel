@@ -149,7 +149,7 @@ fn configure_network(cfg: &mut Config) -> anyhow::Result<()> {
 pub fn configure_node(cfg: &mut Config) -> anyhow::Result<()> {
     let gateway = Confirm::new("Run as gateway?")
         .with_help_message("Gateway nodes cannot perform mutations")
-        .with_default(true)
+        .with_default(false)
         .prompt()?;
     cfg.node.gateway = gateway;
     Ok(())
