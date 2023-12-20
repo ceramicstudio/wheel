@@ -39,7 +39,7 @@ pub async fn install_ceramic_daemon(
     if let Some(v) = version.as_ref() {
         program.push_str(&format!("@{}", v.to_string()));
     }
-    npm_install_package(&working_directory, &program, true).await?;
+    npm_install_package(&working_directory, &program, false).await?;
 
     let ans = match start_ceramic {
         Some(true) => true,

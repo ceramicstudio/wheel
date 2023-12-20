@@ -3,4 +3,8 @@
 Cargo.lock
 tmp
 .DS_Store
+# default wheel app names (historic and current)
 ceramic-test-app
+ceramic-app
+# postgres compose volume
+ceramic-pg-data

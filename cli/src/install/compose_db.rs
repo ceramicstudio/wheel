@@ -30,7 +30,7 @@ pub async fn install_compose_db(
     if let Some(v) = version.as_ref() {
         program.push_str(&format!("@{}", v.to_string()));
     }
-    npm_install_package(working_directory, &program, true).await?;
+    npm_install_package(working_directory, &program, false).await?;
 
     let env_file = working_directory.join("composedb.env");
     let mut f = tokio::fs::OpenOptions::new()

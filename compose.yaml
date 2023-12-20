@@ -1,0 +1,15 @@
+version: '3.1'
+
+services:
+  db:
+    image: postgres:16
+    container_name: ceramic-db
+    restart: always
+    environment:
+      POSTGRES_USER: ceramic
+      POSTGRES_PASSWORD: password
+      DATABASE: ceramic
+    volumes:
+      - ./ceramic-pg-data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
