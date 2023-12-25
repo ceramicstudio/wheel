@@ -24,7 +24,7 @@ spinners = "4.1"
 sqlx = { version = "0.7", features = ["postgres", "runtime-tokio-rustls", "sqlite"] }
 ssi = "0.7"
 tokio = { version = "1.25", default-features = false, features = ["fs", "macros", "process", "rt", "rt-multi-thread"] }
-which = "4.4"
+which = "5.0"
 zip = "0.6"
 
 [[bin]]
