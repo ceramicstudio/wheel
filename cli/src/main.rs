@@ -1,8 +1,10 @@
+use anyhow::{bail, Ok};
 use clap::{Parser, Subcommand, ValueEnum};
 use log::LevelFilter;
 use std::fmt::Formatter;
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
 enum Network {
@@ -92,6 +94,8 @@ struct ProgramArgs {
     command: Option<Commands>,
 }
 
+static CANCEL_REQUEST_CNT: AtomicUsize = AtomicUsize::new(0);
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let _ = env_logger::builder()
@@ -106,61 +110,112 @@ async fn main() -> anyhow::Result<()> {
         .map(PathBuf::from)
         .unwrap_or_else(|| current_directory);
     let mut versions = wheel_3box::Versions::default();
-    if let Some(v) = args.ceramic_version {
+    if let Some(ref v) = args.ceramic_version {
         versions.ceramic = Some(v.parse()?);
     }
-    if let Some(v) = args.composedb_version {
+    if let Some(ref v) = args.composedb_version {
         versions.composedb = Some(v.parse()?);
     }
     if let Some(v) = args.template_branch {
         versions.template_branch = Some(v);
     }
 
-    let opt_child = match args.command {
-        None => {
-            log::info!("Starting wheel interactive configuration");
-            wheel_3box::interactive_default(working_directory, versions).await?
+    let (shutdown_tx, mut shutdown_rx) = tokio::sync::broadcast::channel::<()>(8);
+
+    let main_task = tokio::spawn(async move {
+        let opt_child = match args.command {
+            None => {
+                log::info!("Starting wheel interactive configuration");
+
+                tokio::select! {
+                    res = wheel_3box::interactive_default(working_directory, versions) => {
+                        res?
+                    },
+                    _shutdown = shutdown_rx.recv() => {
+                        log::info!("\nReceived shutdown request, exiting interactive setup");
+                       return Ok(())
+                    }
+                }
+            }
+            Some(Commands::Quiet(q)) => {
+                let network = match q.network {
+                    Network::InMemory => wheel_3box::NetworkIdentifier::InMemory,
+                    Network::Local => wheel_3box::NetworkIdentifier::Local,
+                    Network::Dev => wheel_3box::NetworkIdentifier::Dev,
+                    Network::Clay => wheel_3box::NetworkIdentifier::Clay,
+                    Network::Mainnet => wheel_3box::NetworkIdentifier::Mainnet,
+                };
+                let with_composedb = q.setup == Setup::ComposeDB;
+                let with_app_template = q.setup == Setup::DemoApplication;
+                let did = if let DidCommand::Specify(opts) = q.did {
+                    Some(wheel_3box::DidOptions {
+                        did: opts.did,
+                        private_key: opts.private_key,
+                    })
+                } else {
+                    None
+                };
+
+                let opts = wheel_3box::QuietOptions {
+                    project_name: q.project_name,
+                    working_directory: working_directory,
+                    network_identifier: network,
+                    versions,
+                    did,
+                    with_ceramic: with_app_template
+                        || with_composedb
+                        || q.setup == Setup::CeramicOnly,
+                    with_composedb: with_app_template || with_composedb,
+                    with_app_template: with_app_template,
+                };
+
+                tokio::select! {
+                    res = wheel_3box::quiet(opts)  => {
+                        res?
+                    },
+                    _shutdown = shutdown_rx.recv() => {
+                        log::info!("\nReceived shutdown request, exiting quiet setup");
+                        return Ok(())
+                    }
+                }
+            }
+        };
+
+        log::info!("Wheel setup is complete. If running a clay or mainnet node, please check out https://github.com/ceramicstudio/simpledeploy to deploy with k8s.");
+
+        if let Some(child) = opt_child {
+            log::info!("Ceramic is now running in the background. Please use another terminal for additional commands. You can interrupt ceramic using ctrl-c.");
+            // we could select!, but the child daemon handles ctrl+c, so we ignore it so it gets a chance to exit gracefully.
+            child.await?;
         }
-        Some(Commands::Quiet(q)) => {
-            let network = match q.network {
-                Network::InMemory => wheel_3box::NetworkIdentifier::InMemory,
-                Network::Local => wheel_3box::NetworkIdentifier::Local,
-                Network::Dev => wheel_3box::NetworkIdentifier::Dev,
-                Network::Clay => wheel_3box::NetworkIdentifier::Clay,
-                Network::Mainnet => wheel_3box::NetworkIdentifier::Mainnet,
-            };
-            let with_composedb = q.setup == Setup::ComposeDB;
-            let with_app_template = q.setup == Setup::DemoApplication;
-            let did = if let DidCommand::Specify(opts) = q.did {
-                Some(wheel_3box::DidOptions {
-                    did: opts.did,
-                    private_key: opts.private_key,
-                })
-            } else {
-                None
-            };
-            wheel_3box::quiet(wheel_3box::QuietOptions {
-                project_name: q.project_name,
-                working_directory: working_directory,
-                network_identifier: network,
-                versions,
-                did,
-                with_ceramic: with_app_template || with_composedb || q.setup == Setup::CeramicOnly,
-                with_composedb: with_app_template || with_composedb,
-                with_app_template: with_app_template,
-            })
-            .await?
+
+        Ok(())
+    });
+
+    let abort_handle = main_task.abort_handle();
+
+    let resp = tokio::select! {
+        res = main_task => {
+            res?
+        },
+        ctrl_c = tokio::signal::ctrl_c() => {
+            if let Err(e) = ctrl_c {
+                log::error!("\nError attaching ctrl-c handler: {}", e);
+                bail!("Error listening for ctrl-c")
+            }
+            log::info!("\nReceived ctrl-c, shutting down gracefully. Press ctrl-c again to force shutdown.");
+            if let Err(_e) = shutdown_tx.send(()) {
+                log::warn!("\nError notifying child tasks of shutdown request");
+            }
+
+            let cnt = CANCEL_REQUEST_CNT.fetch_add(1, Ordering::SeqCst);
+            if cnt > 0 {
+                log::info!("\nReceived additional ctrl-c, forcing shutdown");
+                abort_handle.abort();
+            }
+            Ok(())
         }
     };
 
-    log::info!("Wheel setup is complete. If running a clay or mainnet node, please check out https://github.com/ceramicstudio/simpledeploy to deploy with k8s.");
-
-    if let Some(child) = opt_child {
-        log::info!("Ceramic is now running in the background. Please use another terminal for additional commands. You can interrupt ceramic using ctrl-c.");
-        child.await?;
-    } else {
-        log::info!("Wheel setup is complete.");
-    }
-
-    Ok(())
+    resp
 }
