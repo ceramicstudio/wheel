@@ -108,6 +108,13 @@ async fn main() -> anyhow::Result<()> {
     let working_directory = args
         .working_directory
         .map(PathBuf::from)
+        .and_then(|p| {
+            if p.is_absolute() {
+                Some(p)
+            } else {
+                Some(current_directory.join(p))
+            }
+        })
         .unwrap_or_else(|| current_directory);
     let mut versions = wheel_3box::Versions::default();
     if let Some(ref v) = args.ceramic_version {
