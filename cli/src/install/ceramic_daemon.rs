@@ -83,7 +83,7 @@ pub async fn install_ceramic_daemon(
             if let Ok(exit) = process.wait().await {
                 let _ = tx.send(exit.clone()).await;
                 log::info!(
-                    "Ceramic exited with code {}",
+                    "\nCeramic exited with code {}",
                     exit.code().unwrap_or_else(|| 0)
                 );
                 if !exit.success() {

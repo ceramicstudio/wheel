@@ -29,9 +29,9 @@ by option.
 
 If you don't want to step through prompts at all, you can use wheel in "quiet" mode, which will default to clay
 
-    wheel --working-directory <path to setup your work in> quiet  --network <one of inmemory|local|dev|clay|mainnet> --did <did> --pk <pk>
+    wheel --working-directory <path to setup your work in> quiet  --network <one of in-memory|local|dev|clay|mainnet> generate 
 
-This requires you to have already setup a DID and [CAS Auth](#cas-auth). Please run `wheel --help` for more options.
+You can also pass an existing DID and PK via the `specify` option instead of `generate`. This requires you to have already setup a DID and [CAS Auth](#cas-auth). Please run `wheel --help` for more options.
 
 ### CAS Auth
 
