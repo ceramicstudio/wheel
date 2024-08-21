@@ -74,12 +74,14 @@ impl Into<crate::daemon::DaemonConfig> for crate::Config {
                 mode: Some(crate::daemon::DaemonIpfsConfigMode::Remote),
                 host: Some(r.host),
                 pinning_endpoints: None,
+                disable_peer_data_sync: Some(false),
             }
         } else {
             crate::daemon::DaemonIpfsConfig {
-                mode: Some(crate::daemon::DaemonIpfsConfigMode::Bundled),
-                host: None,
+                mode: Some(crate::daemon::DaemonIpfsConfigMode::Remote),
+                host: Some("http://localhost:5101".to_string()),
                 pinning_endpoints: None,
+                disable_peer_data_sync: Some(false),
             }
         });
         let logger = Some(if let Some(l) = self.logger.file {

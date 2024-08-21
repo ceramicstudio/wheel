@@ -18,6 +18,7 @@ pub struct DaemonIpfsConfig {
     pub host: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pinning_endpoints: Option<Vec<String>>,
+    pub disable_peer_data_sync: Option<bool>,
 }
 
 #[derive(Serialize)]
