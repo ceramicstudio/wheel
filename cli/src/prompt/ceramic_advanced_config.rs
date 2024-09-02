@@ -47,8 +47,8 @@ pub async fn prompt(
 
 pub fn configure_ipfs(cfg: &mut Config) -> anyhow::Result<()> {
     let ans = Select::new(
-        "Bundled or Remote IPFS (default=Bundled)",
-        vec![Ipfs::Bundled, Ipfs::Remote(IpfsRemote::default())],
+        "Bundled or Remote IPFS (default=Remote)",
+        vec![Ipfs::Remote(IpfsRemote::default()), Ipfs::Bundled],
     )
     .prompt()?;
 

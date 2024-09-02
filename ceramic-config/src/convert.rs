@@ -69,13 +69,19 @@ impl Into<crate::daemon::DaemonConfig> for crate::Config {
             admin_dids: Some(self.http_api.admin_dids),
             cors_allowed_origins: cors,
         });
-        let ipfs = Some(crate::daemon::DaemonIpfsConfig {
+        let ipfs = Some(if let crate::Ipfs::Remote(r) = self.ipfs {
+            crate::daemon::DaemonIpfsConfig {
                 mode: Some(crate::daemon::DaemonIpfsConfigMode::Remote),
-                host: Some("http://localhost:5101".to_string()),
+                host: Some(r.host),
                 pinning_endpoints: None,
-                disable_peer_data_sync: Some(false),
-            })
-        ;
+            }
+        } else {
+            crate::daemon::DaemonIpfsConfig {
+                mode: Some(crate::daemon::DaemonIpfsConfigMode::Bundled),
+                host: None,
+                pinning_endpoints: None,
+            }
+        });
         let logger = Some(if let Some(l) = self.logger.file {
             crate::daemon::DaemonLoggerConfig {
                 log_to_files: Some(l.enabled),

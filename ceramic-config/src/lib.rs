@@ -16,7 +16,7 @@ pub struct IpfsRemote {
 impl Default for IpfsRemote {
     fn default() -> Self {
         Self {
-            host: "/ipfs".to_string(),
+            host: "http://localhost:5101".to_string(),
         }
     }
 }
@@ -38,7 +38,7 @@ impl std::fmt::Display for Ipfs {
 
 impl Default for Ipfs {
     fn default() -> Self {
-        Self::Bundled
+        Self::Remote(IpfsRemote::default())
     }
 }
 
